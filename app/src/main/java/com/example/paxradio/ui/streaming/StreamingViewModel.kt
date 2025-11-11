@@ -8,7 +8,6 @@ import android.media.AudioManager
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
 import com.example.paxradio.data.PlayerState
 import com.example.paxradio.data.RadioStation
 import com.example.paxradio.data.RadioStationParser
@@ -17,6 +16,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -42,34 +42,11 @@ class StreamingViewModel @Inject constructor(
     private val _sleepTimerMinutes = MutableStateFlow(0)
     val sleepTimerMinutes = _sleepTimerMinutes.asStateFlow()
 
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
     init {
         loadStations()
         observeSleepTimer()
-        observeSystemVolume()
-    }
-
-    private fun observeSystemVolume() {
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-
-        viewModelScope.launch {
-            // Initial sync
-            val initialSystemVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-            val initialPlayerVolume = initialSystemVolume.toFloat() / maxVolume.toFloat()
-            _volume.value = initialPlayerVolume
-            player.setVolume(initialPlayerVolume)
-
-            // Poll for changes (a BroadcastReceiver would be more efficient)
-            while (true) {
-                val currentSystemVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                val newVolume = currentSystemVolume.toFloat() / maxVolume.toFloat()
-                if (_volume.value != newVolume) {
-                    _volume.value = newVolume
-                    player.setVolume(newVolume) // Sync player with system
-                }
-                kotlinx.coroutines.delay(500) // Check every 500ms
-            }
-        }
     }
 
     private fun observeSleepTimer() {
@@ -148,8 +125,6 @@ class StreamingViewModel @Inject constructor(
             _volume.value = newVolume
             player.setVolume(newVolume)
 
-            // Also update system volume
-            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val systemVolume = (newVolume * maxVolume).toInt()
             audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, systemVolume, 0)

@@ -1,161 +1,151 @@
 package com.example.paxradio.ui.components
 
-import android.media.SoundPool
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.paxradio.R
+import kotlinx.coroutines.launch
 import kotlin.math.PI
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val MAX_ROTATION_DEGREES = 270f
-
 @Composable
 fun VolumeKnob(
-    volume: Float, // Expected value between 0.0 and 1.0
+    volume: Float,
     onVolumeChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var rotation by remember { mutableStateOf(volume * MAX_ROTATION_DEGREES) }
-    val animatedRotation by animateFloatAsState(
-        targetValue = rotation,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
-        label = "rotation"
-    )
+    // --- Configuration for Visual Rotation ---
+    val minAngle = -PI.toFloat() * 5 / 4
+    val maxAngle =  PI.toFloat() * 1 / 4
+    val angleRange = maxAngle - minAngle
 
-    // Synchronize internal rotation state with external volume changes
+    // --- State ---
+    val animatedAngle = remember { Animatable(minAngle + volume * angleRange) }
+    var dragStartOffset by remember { mutableStateOf(Offset.Zero) }
+    var dragStartVolume by remember { mutableStateOf(0f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // --- Synchronization ---
+    // Visually update the knob when volume changes from outside
     LaunchedEffect(volume) {
-        rotation = volume.coerceIn(0f, 1f) * MAX_ROTATION_DEGREES
+        val targetAngle = minAngle + volume * angleRange
+        if (kotlin.math.abs(animatedAngle.value - targetAngle) > 0.01f) {
+            animatedAngle.animateTo(targetAngle, animationSpec = spring(stiffness = 50f))
+        }
     }
 
-    val context = LocalContext.current
-    val soundPool = remember { SoundPool.Builder().setMaxStreams(1).build() }
-    val tickSoundId = remember { soundPool.load(context, R.raw.volume_tick, 1) }
-    var lastPlayedVolumeStep by remember { mutableStateOf(-1) }
-
-    val knobSize = 200.dp
-
+    // --- UI & Gesture Logic: Simplified "Slider" Behavior ---
     Box(
-        modifier = modifier.size(knobSize),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(
-            modifier = Modifier
-                .size(knobSize)
-                .pointerInput(Unit) {
-                    detectDragGestures { change, _ ->
-                        change.consume()
-                        val center = Offset(size.width / 2f, size.height / 2f)
-                        val touchPos = change.position
-                        val angleRad = atan2(
-                            center.y - touchPos.y,
-                            touchPos.x - center.x
-                        )
+        modifier = modifier
+            .size(200.dp)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { startOffset ->
+                        // At the start of a drag, just record the initial touch position and volume.
+                        dragStartOffset = startOffset
+                        dragStartVolume = volume
+                    },
+                    onDrag = { change, _ ->
+                        // Calculate the horizontal distance the finger has moved.
+                        val dragDistanceX = change.position.x - dragStartOffset.x
 
-                        // Map angle to 0-360 range, with 0 degrees at the top
-                        val angleDeg = (Math.toDegrees(angleRad.toDouble()).toFloat() + 450f) % 360f
+                        // Define sensitivity: how many pixels of drag correspond to a full volume change.
+                        // A larger value makes it less sensitive.
+                        val fullDragDistance = size.width * 1.5f
 
-                        // Clamp rotation to the allowed 270-degree arc (from -45 to 225, mapped to 45 to 315)
-                        val newRotation = angleDeg.coerceIn(45f, 315f)
+                        // Calculate the change in volume based on the horizontal drag distance.
+                        val volumeDelta = dragDistanceX / fullDragDistance
 
-                        // Normalize rotation from [45, 315] to [0, 270]
-                        val normalizedRotation = newRotation - 45f
+                        // Apply the change to the volume that we captured when the drag started.
+                        val newVolume = (dragStartVolume + volumeDelta).coerceIn(0f, 1f)
 
-                        if (rotation != normalizedRotation) {
-                            rotation = normalizedRotation
-                            val newVolume = (rotation / MAX_ROTATION_DEGREES).coerceIn(0f, 1f)
-                            onVolumeChange(newVolume)
+                        // Update the app's state.
+                        onVolumeChange(newVolume)
 
-                            // Play tick sound every 5%
-                            val currentVolumeStep = (newVolume * 20).toInt() // 100 / 5 = 20 steps
-                            if (currentVolumeStep != lastPlayedVolumeStep) {
-                                soundPool.play(tickSoundId, 0.5f, 0.5f, 1, 0, 1f)
-                                lastPlayedVolumeStep = currentVolumeStep
-                            }
+                        // Update the visual indicator to match the new volume.
+                        val newIndicatorAngle = minAngle + newVolume * angleRange
+                        coroutineScope.launch {
+                            animatedAngle.snapTo(newIndicatorAngle)
                         }
                     }
-                }
-        ) {
-            val centerOffset = Offset(size.width / 2f, size.height / 2f)
-            val radius = size.minDimension / 2f - 15.dp.toPx()
-            val knobRadius = radius * 0.8f
-
-            // 1. Draw the outer scale dots (11 dots for 0% to 100%)
-            for (i in 0..10) {
-                val angleRad = Math.toRadians((i * (MAX_ROTATION_DEGREES / 10f)) - 135.0).toFloat()
-                val dotCenter = Offset(
-                    x = centerOffset.x + radius * cos(angleRad),
-                    y = centerOffset.y + radius * sin(angleRad)
-                )
-                drawCircle(
-                    color = Color.Gray,
-                    radius = 2.dp.toPx(),
-                    center = dotCenter
                 )
             }
+    ) {
+        // --- Drawing (Unchanged from the realistic design) ---
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val center = Offset(size.width / 2, size.height / 2)
+            val radius = size.minDimension / 2
+            val knobRadius = radius * 0.8f
 
-            // 2. Classic Knob Body
-            drawCircle(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF3C3C3C), Color(0xFF2A2A2A)),
-                ),
-                radius = knobRadius,
-                center = centerOffset,
-            )
-            drawCircle(
-                style = Stroke(width = 1.dp.toPx()),
-                color = Color.Black.copy(alpha = 0.5f),
-                radius = knobRadius,
-                center = centerOffset
-            )
-
-            // 3. Indicator on the knob
-            rotate(degrees = animatedRotation - 135f, pivot = centerOffset) {
+            // 1. Draw background scale ticks
+            val tickCount = 11
+            for (i in 0 until tickCount) {
+                val stepRatio = i.toFloat() / (tickCount - 1)
+                val stepAngle = minAngle + stepRatio * angleRange
+                val startRadius = radius * 0.95f
+                val endRadius = radius
                 drawLine(
-                    color = Color(0xFF00A2FF),
-                    start = Offset(centerOffset.x, centerOffset.y - knobRadius * 0.7f),
-                    end = Offset(centerOffset.x, centerOffset.y - knobRadius),
-                    strokeWidth = 3.dp.toPx(),
+                    color = Color.Gray.copy(alpha = 0.5f),
+                    start = Offset(center.x + startRadius * cos(stepAngle), center.y + startRadius * sin(stepAngle)),
+                    end = Offset(center.x + endRadius * cos(stepAngle), center.y + endRadius * sin(stepAngle)),
+                    strokeWidth = 1.5.dp.toPx(),
                     cap = StrokeCap.Round
                 )
             }
-        }
 
-        // Volume percentage text
-        Text(
-            text = "${(volume * 100).toInt()}%",
-            color = Color.White,
-            fontSize = 20.sp,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
+            // 2. Draw knob depression shadow
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent),
+                    center = center,
+                    radius = knobRadius + 4.dp.toPx()
+                ),
+                radius = knobRadius + 4.dp.toPx(),
+                center = center
+            )
 
-    // Release SoundPool when the composable is disposed
-    DisposableEffect(Unit) {
-        onDispose {
-            soundPool.release()
+            // 3. Draw the main knob body
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF888888), Color(0xFF444444)),
+                    center = center,
+                    radius = knobRadius
+                ),
+                radius = knobRadius,
+                center = center
+            )
+            drawCircle(Color.Black.copy(alpha = 0.8f), knobRadius, center = center, style = Stroke(width = 2.dp.toPx()))
+
+            // 4. Draw the engraved indicator line
+            val angle = animatedAngle.value
+            val indicatorStartRadius = knobRadius * 0.6f
+            val indicatorEndRadius = knobRadius * 0.9f
+            drawLine(
+                color = Color.Black.copy(alpha = 0.5f),
+                start = Offset(center.x + indicatorStartRadius * cos(angle), center.y + indicatorStartRadius * sin(angle)),
+                end = Offset(center.x + indicatorEndRadius * cos(angle), center.y + indicatorEndRadius * sin(angle)),
+                strokeWidth = 2.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = Color.White.copy(alpha = 0.5f),
+                start = Offset(center.x + indicatorStartRadius * cos(angle + 0.02f), center.y + indicatorStartRadius * sin(angle + 0.02f)),
+                end = Offset(center.x + indicatorEndRadius * cos(angle + 0.02f), center.y + indicatorEndRadius * sin(angle + 0.02f)),
+                strokeWidth = 1.dp.toPx(),
+                cap = StrokeCap.Round
+            )
         }
     }
 }
-
-

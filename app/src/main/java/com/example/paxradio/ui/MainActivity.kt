@@ -4,40 +4,44 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.compose.animation.AnimatedVisibility
+import androidx.activity.viewModels
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.PauseCircle
-import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.paxradio.ui.components.SleepAlarmBottomSheet
+import com.example.paxradio.player.RadioPlaybackService
+import com.example.paxradio.player.sound.SoundPlayer
 import com.example.paxradio.ui.components.*
 import com.example.paxradio.ui.fm.FmModeScreen
+import com.example.paxradio.ui.fm.FmRadioViewModel
 import com.example.paxradio.ui.streaming.StreamingViewModel
 import com.example.paxradio.ui.theme.DarkBackground
 import com.example.paxradio.ui.theme.DeepBlue
 import com.example.paxradio.ui.theme.PaxRadioTheme
-import com.example.paxradio.player.RadioPlaybackService
-import com.example.paxradio.ui.fm.FmRadioViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var soundPlayer: SoundPlayer
+    private val streamingVm: StreamingViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -47,15 +51,15 @@ class MainActivity : ComponentActivity() {
         } else {
             startService(serviceIntent)
         }
-        setContent { AppContent() }
+        setContent { AppContent(soundPlayer, streamingVm) }
     }
 }
 
 @Composable
-private fun AppContent() {
+private fun AppContent(soundPlayer: SoundPlayer, streamingVm: StreamingViewModel) {
     PaxRadioTheme {
-        val streamingVm: StreamingViewModel = hiltViewModel()
         val fmVm: FmRadioViewModel = hiltViewModel()
+        val haptic = LocalHapticFeedback.current
 
         var showStationSelector by remember { mutableStateOf(false) }
         var showSleepAlarm by remember { mutableStateOf(false) }
@@ -68,6 +72,9 @@ private fun AppContent() {
         val sleepTimerMinutes by streamingVm.sleepTimerMinutes.collectAsState()
         val frequency by fmVm.freq.collectAsState()
         val headphones by fmVm.headphones.collectAsState()
+        val volume by streamingVm.volume.collectAsState()
+        var lastVolume by rememberSaveable { mutableFloatStateOf(0f) }
+
 
         Box(
             modifier = Modifier
@@ -86,20 +93,22 @@ private fun AppContent() {
                 // Radio Mode
                 Column(
                     modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Now Playing Card
                     NowPlayingCard(
                         station = current,
                         playerState = playerState,
+                        onToggle = { streamingVm.toggle() },
+                        enabled = current != null && current!!.isValidUrl,
                         modifier = Modifier.weight(1f, fill = false)
                     )
 
                     // Sleep Timer Status
                     if (sleepTimerActive) {
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "⏱ Sleeping in ${sleepTimerMinutes}m",
                             style = MaterialTheme.typography.bodyMedium,
@@ -108,24 +117,21 @@ private fun AppContent() {
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // Play/Pause Button
-                    PlayPauseButton(
-                        playerState = playerState,
-                        onClick = { streamingVm.toggle() },
-                        enabled = current != null && current!!.isValidUrl
-                    )
-
-                    Spacer(modifier = Modifier.weight(1f))
 
                     // Volume Knob
                     VolumeKnob(
-                        volume = streamingVm.volume(),
-                        onVolumeChange = { streamingVm.setVolume(it) }
+                        volume = volume,
+                        onVolumeChange = { newVolume ->
+                            // Trigger haptics and sound on discrete steps (e.g., every 2%)
+                            if (kotlin.math.abs(newVolume - lastVolume) >= 0.02f) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                soundPlayer.playClick()
+                                lastVolume = newVolume
+                            }
+                            streamingVm.setVolume(newVolume)
+                        },
+                        modifier = Modifier.padding(bottom = 100.dp)
                     )
-
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
 
@@ -170,41 +176,6 @@ private fun AppContent() {
                 }
             )
         }
-    }
-}
-
-@Composable
-private fun PlayPauseButton(
-    playerState: com.example.paxradio.data.PlayerState,
-    onClick: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val isPlaying = playerState is com.example.paxradio.data.PlayerState.Playing
-    val scale by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.95f,
-        animationSpec = spring(dampingRatio = 0.5f, stiffness = 300f),
-        label = "button_scale"
-    )
-
-    FilledIconButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier
-            .size(100.dp)
-            .scale(scale),
-        colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = if (enabled) DeepBlue else Color(0xFF3A3A3A),
-            disabledContainerColor = Color(0xFF3A3A3A)
-        ),
-        shape = CircleShape
-    ) {
-        Icon(
-            imageVector = if (isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
-            contentDescription = if (isPlaying) "Pause" else "Play",
-            modifier = Modifier.size(60.dp),
-            tint = if (enabled) Color.White else Color.Gray
-        )
     }
 }
 
@@ -271,4 +242,3 @@ private fun BottomActionBar(
         }
     }
 }
-

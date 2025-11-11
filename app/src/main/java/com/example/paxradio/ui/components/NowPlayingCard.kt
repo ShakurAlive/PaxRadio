@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +33,8 @@ import com.example.paxradio.ui.theme.DeepBlue
 fun NowPlayingCard(
     station: RadioStation?,
     playerState: com.example.paxradio.data.PlayerState,
+    onToggle: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     val isPlaying = playerState is com.example.paxradio.data.PlayerState.Playing
@@ -89,6 +93,28 @@ fun NowPlayingCard(
                     else -> Color(0xFFB0B0B0)
                 }
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Play/Pause Button
+            FilledIconButton(
+                onClick = onToggle,
+                enabled = enabled,
+                modifier = Modifier
+                    .size(80.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = if (enabled) DeepBlue else Color(0xFF3A3A3A),
+                    disabledContainerColor = Color(0xFF3A3A3A)
+                ),
+                shape = CircleShape
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    modifier = Modifier.size(50.dp),
+                    tint = if (enabled) Color.White else Color.Gray
+                )
+            }
         }
     }
 }
@@ -175,4 +201,3 @@ private fun StationLogo(
         }
     )
 }
-
