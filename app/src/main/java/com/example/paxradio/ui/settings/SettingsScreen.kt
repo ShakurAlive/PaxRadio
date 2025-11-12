@@ -51,7 +51,7 @@ fun SettingsScreen(
                     )
                 }
 
-                Divider(color = Color.Gray.copy(alpha = 0.3f))
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.3f))
 
                 // Settings Items
                 var selectedTabIndex by remember { mutableStateOf(0) }
