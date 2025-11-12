@@ -1,4 +1,7 @@
-Rock FM|http://stream.example.com/rock|rock_fm.jpg
-Jazz Radio|http://stream.example.com/jazz|jazz_radio.jpg
-News 24/7|http://stream.example.com/news|news_24.jpg
-Europe+KG|https://cdn.radioplayer.kg:8443/europa64|europakg.png
+Европа Плюс Бишкек|https://cdn.radioplayer.kg:8443/europa64|europakg.png
+Ретро FM Кыргызстан|https://cdn.radioplayer.kg:8443/retro64|retrofm-kg.png
+Хит FM Бишкек|https://cdn.radioplayer.kg:8443/hitfm64|hitfm-kg.png
+Хит FM Москва|http://23.105.238.4/hitfm128.mp3|hit-fm-moscow.png
+Юмор FM|http://pub0101.101.ru:8000/stream/reg/mp3/128/region_humor_6|umorfm.png
+Радио Шансон|http://5.101.51.219:8041/chanson256.mp3|shanson.png
+Русское Радио|http://softguru.su:8000/russkoe.fm|russkoe-radio.png

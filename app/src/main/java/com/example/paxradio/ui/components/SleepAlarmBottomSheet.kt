@@ -126,7 +126,7 @@ private fun SleepTimerTab(onTimerSet: (Long) -> Unit) {
             }
         }
 
-        Divider(color = Color(0xFF3A3A3A), modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(color = Color(0xFF3A3A3A), modifier = Modifier.padding(vertical = 8.dp))
 
         // Custom time
         Text(
@@ -290,7 +290,7 @@ private fun AlarmTab(
             }
         }
 
-        Divider(color = Color(0xFF3A3A3A))
+        HorizontalDivider(color = Color(0xFF3A3A3A))
 
         // Station selection
         Text(
