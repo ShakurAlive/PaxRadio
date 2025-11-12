@@ -12,18 +12,23 @@ import com.example.paxradio.data.PlayerState
 import com.example.paxradio.data.RadioStation
 import com.example.paxradio.data.RadioStationParser
 import com.example.paxradio.player.RadioPlayer
+import com.example.paxradio.player.SleepTimerManager
+import com.example.paxradio.receiver.AlarmReceiver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
 class StreamingViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val player: RadioPlayer,
-    private val sleepTimerManager: com.example.paxradio.player.SleepTimerManager
+    private val sleepTimerManager: SleepTimerManager
 ) : ViewModel() {
 
     private val _stations = MutableStateFlow<List<RadioStation>>(emptyList())
@@ -35,13 +40,15 @@ class StreamingViewModel @Inject constructor(
     private val _playerState = MutableStateFlow<PlayerState>(PlayerState.Idle)
     val playerState = _playerState.asStateFlow()
 
-    private val _volume = MutableStateFlow(0.5f) // Start with a default volume
+    val trackTitle = player.trackTitle
+
+    private val _volume = MutableStateFlow(0.5f)
     val volume = _volume.asStateFlow()
 
     val sleepTimerActive = sleepTimerManager.isActive
     private val _sleepTimerMinutes = MutableStateFlow(0)
     val sleepTimerMinutes = _sleepTimerMinutes.asStateFlow()
-
+    
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     init {
@@ -58,7 +65,11 @@ class StreamingViewModel @Inject constructor(
     }
 
     private fun loadStations() {
-        _stations.value = RadioStationParser.parseFromAssets(context)
+        viewModelScope.launch {
+            _stations.value = withContext(Dispatchers.IO) {
+                RadioStationParser.parseFromAssets(context)
+            }
+        }
     }
 
     fun select(station: RadioStation) {
@@ -124,13 +135,9 @@ class StreamingViewModel @Inject constructor(
         if (_volume.value != newVolume) {
             _volume.value = newVolume
             player.setVolume(newVolume)
-
-            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            val systemVolume = (newVolume * maxVolume).toInt()
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, systemVolume, 0)
         }
     }
-
+    
     fun setSleepTimer(durationMillis: Long) {
         if (durationMillis > 0) {
             sleepTimerManager.startTimer(durationMillis) {
@@ -144,11 +151,11 @@ class StreamingViewModel @Inject constructor(
 
     fun setAlarm(hour: Int, minute: Int, station: RadioStation) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(context, com.example.paxradio.receiver.AlarmReceiver::class.java).apply {
-            action = com.example.paxradio.receiver.AlarmReceiver.ACTION_ALARM
-            putExtra(com.example.paxradio.receiver.AlarmReceiver.EXTRA_STATION_ID, station.id)
-            putExtra(com.example.paxradio.receiver.AlarmReceiver.EXTRA_STATION_NAME, station.name)
-            putExtra(com.example.paxradio.receiver.AlarmReceiver.EXTRA_STATION_URL, station.streamUrl)
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_ALARM
+            putExtra(AlarmReceiver.EXTRA_STATION_ID, station.id)
+            putExtra(AlarmReceiver.EXTRA_STATION_NAME, station.name)
+            putExtra(AlarmReceiver.EXTRA_STATION_URL, station.streamUrl)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -157,12 +164,12 @@ class StreamingViewModel @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val calendar = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.HOUR_OF_DAY, hour)
-            set(java.util.Calendar.MINUTE, minute)
-            set(java.util.Calendar.SECOND, 0)
-            if (before(java.util.Calendar.getInstance())) {
-                add(java.util.Calendar.DATE, 1)
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            if (before(Calendar.getInstance())) {
+                add(Calendar.DATE, 1)
             }
         }
 
@@ -174,6 +181,23 @@ class StreamingViewModel @Inject constructor(
 
         viewModelScope.launch {
             Toast.makeText(context, "Alarm set for ${String.format("%02d:%02d", hour, minute)}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun cancelAlarm() {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_ALARM
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+        viewModelScope.launch {
+            Toast.makeText(context, "Alarm canceled", Toast.LENGTH_SHORT).show()
         }
     }
 

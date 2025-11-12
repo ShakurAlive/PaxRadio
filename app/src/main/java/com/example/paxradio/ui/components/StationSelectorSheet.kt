@@ -1,6 +1,5 @@
 package com.example.paxradio.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,8 +8,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Equalizer
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
@@ -28,7 +25,6 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.paxradio.data.RadioStation
 import com.example.paxradio.ui.theme.CardBackground
-import com.example.paxradio.ui.theme.DeepBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,35 +36,42 @@ fun StationSelectorSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1A1A1A)
+        containerColor = Color.Black.copy(alpha = 0.5f),
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false) // Allow half-expansion
     ) {
-        Column(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
         ) {
-            Text(
-                text = "Select Station",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
-                items(stations) { station ->
-                    StationCard(
-                        station = station,
-                        isSelected = station.id == currentStation?.id,
-                        onClick = { onStationSelect(station) }
-                    )
+                Text(
+                    text = "Select Station",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp, start = 8.dp)
+                )
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(stations, key = { it.id }) { station ->
+                        StationCard(
+                            station = station,
+                            isSelected = station.id == currentStation?.id,
+                            onClick = { onStationSelect(station) }
+                        )
+                    }
                 }
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -89,7 +92,7 @@ private fun StationCard(
         shape = RoundedCornerShape(16.dp),
         color = when {
             isInvalid -> Color(0xFF3A1A1A) // Red tint for invalid
-            isSelected -> DeepBlue.copy(alpha = 0.3f)
+            isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
             else -> CardBackground
         }
     ) {
@@ -109,7 +112,8 @@ private fun StationCard(
                 contentDescription = station.name,
                 modifier = Modifier
                     .size(56.dp)
-                            .background(if (isInvalid) Color(0xFF5A3A3A) else Color(0xFF3A3A3A)),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isInvalid) Color(0xFF5A3A3A) else Color(0xFF3A3A3A)),
                 contentScale = ContentScale.Crop,
                 error = {
                     Box(
@@ -122,15 +126,13 @@ private fun StationCard(
                             Icons.Filled.Mic,
                             contentDescription = null,
                             modifier = Modifier.size(28.dp),
-                            tint = if (isInvalid) Color(0xFFFF6666) else DeepBlue
+                            tint = if (isInvalid) Color(0xFFFF6666) else MaterialTheme.colorScheme.primary
                         )
                     }
                 }
             )
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = station.name,
                     style = MaterialTheme.typography.titleMedium,
@@ -149,7 +151,7 @@ private fun StationCard(
                 Icon(
                     Icons.Filled.Equalizer,
                     contentDescription = "Playing",
-                    tint = DeepBlue,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
             } else if (isInvalid) {
@@ -163,4 +165,3 @@ private fun StationCard(
         }
     }
 }
-

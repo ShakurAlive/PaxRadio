@@ -1,65 +1,53 @@
 package com.example.paxradio.player
 
-import android.util.Log
+import android.content.Context
 import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class RadioPlayer @Inject constructor(
-    val exoPlayer: ExoPlayer
+    @ApplicationContext context: Context
 ) {
-    private var currentId: String? = null
+    val exoPlayer: ExoPlayer = ExoPlayer.Builder(context).build()
+
+    private val _trackTitle = MutableStateFlow<String?>(null)
+    val trackTitle = _trackTitle.asStateFlow()
 
     init {
         exoPlayer.addListener(object : Player.Listener {
-            override fun onPlayerError(error: PlaybackException) {
-                Log.e("RadioPlayer", "Playback error: ${error.message}")
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                _trackTitle.value = mediaMetadata.title?.toString()
             }
         })
     }
 
-    fun play(id: String, url: String): Boolean {
+    fun play(stationId: String, url: String): Boolean {
         return try {
-            if (url.isBlank()) {
-                Log.e("RadioPlayer", "Cannot play: empty URL")
-                return false
-            }
-
-            if (currentId == id && exoPlayer.isPlaying) {
-                return true
-            }
-
-            stop()
-            exoPlayer.setMediaItem(MediaItem.fromUri(url))
+            val mediaItem = MediaItem.Builder()
+                .setUri(url)
+                .setMediaId(stationId)
+                .build()
+            exoPlayer.setMediaItem(mediaItem)
             exoPlayer.prepare()
             exoPlayer.play()
-            currentId = id
             true
         } catch (e: Exception) {
-            Log.e("RadioPlayer", "Error playing stream: ${e.message}")
             false
         }
     }
 
-    fun stop() {
-        exoPlayer.stop()
-        exoPlayer.clearMediaItems()
-    }
-
+    fun resume() = exoPlayer.play()
     fun pause() = exoPlayer.pause()
-
-    fun resume() {
-        if (exoPlayer.playbackState == Player.STATE_READY) {
-            exoPlayer.play()
-        }
+    fun stop() = exoPlayer.stop()
+    fun isPlaying() = exoPlayer.isPlaying
+    fun setVolume(volume: Float) {
+        exoPlayer.volume = volume
     }
-
-    fun isPlaying(): Boolean = exoPlayer.isPlaying
-    fun volume(): Float = exoPlayer.volume
-    fun setVolume(v: Float) { exoPlayer.volume = v.coerceIn(0f,1f) }
-    fun release() = exoPlayer.release()
 }

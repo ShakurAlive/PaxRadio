@@ -1,11 +1,7 @@
 package com.example.paxradio.ui.components
 
-import android.app.AlarmManager
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
@@ -15,13 +11,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.paxradio.data.RadioStation
 import com.example.paxradio.ui.theme.CardBackground
-import com.example.paxradio.ui.theme.DeepBlue
-import java.util.*
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,169 +25,134 @@ fun SleepAlarmBottomSheet(
     stations: List<RadioStation>,
     onDismiss: () -> Unit,
     onSleepTimerSet: (Long) -> Unit,
-    onAlarmSet: (Int, Int, RadioStation) -> Unit
+    onAlarmSet: (Int, Int, RadioStation) -> Unit,
+    onAlarmCancel: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1A1A1A)
+        containerColor = Color.Black.copy(alpha = 0.5f),
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
         ) {
-            Text(
-                text = "Sleep & Alarm",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = CardBackground,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Sleep Timer") },
+                        icon = { Icon(Icons.Filled.Bedtime, contentDescription = null) }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("Alarm") },
+                        icon = { Icon(Icons.Filled.Alarm, contentDescription = null) }
+                    )
+                }
 
-            // Tabs
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = CardBackground,
-                contentColor = DeepBlue
-            ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("Sleep Timer") },
-                    icon = { Icon(Icons.Filled.Bedtime, contentDescription = null) }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Alarm") },
-                    icon = { Icon(Icons.Filled.Alarm, contentDescription = null) }
-                )
-            }
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            when (selectedTab) {
-                0 -> SleepTimerTab(onTimerSet = { minutes ->
-                    onSleepTimerSet(minutes * 60 * 1000L)
-                    onDismiss()
-                })
-                1 -> AlarmTab(
-                    currentStation = currentStation,
-                    stations = stations,
-                    onAlarmSet = { hour, minute, station ->
-                        onAlarmSet(hour, minute, station)
+                when (selectedTab) {
+                    0 -> SleepTimerTab(onTimerSet = { minutes ->
+                        onSleepTimerSet(minutes) // Corrected call
                         onDismiss()
-                    }
-                )
+                    })
+                    1 -> AlarmTab(
+                        currentStation = currentStation,
+                        stations = stations,
+                        onAlarmSet = { hour, minute, station ->
+                            onAlarmSet(hour, minute, station)
+                            onDismiss()
+                        },
+                        onAlarmCancel = {
+                            onAlarmCancel()
+                            onDismiss()
+                        }
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
 @Composable
 private fun SleepTimerTab(onTimerSet: (Long) -> Unit) {
-    var customMinutes by remember { mutableStateOf(30) }
+    val hours = (0..3).map { "%02d".format(it) }
+    val minutes = (0..59).map { "%02d".format(it) }
+
+    var selectedHour by remember { mutableStateOf(0) }
+    var selectedMinute by remember { mutableStateOf(30) }
+
+    val hourListState = rememberLazyListState(initialFirstVisibleItemIndex = (Int.MAX_VALUE / 2) - (Int.MAX_VALUE / 2 % hours.size) + 0)
+    val minuteListState = rememberLazyListState(initialFirstVisibleItemIndex = (Int.MAX_VALUE / 2) - (Int.MAX_VALUE / 2 % minutes.size) + 30)
+
+    LaunchedEffect(hourListState.isScrollInProgress) {
+        if (!hourListState.isScrollInProgress) {
+            val center = hourListState.layoutInfo.viewportEndOffset / 2
+            val closestItem = hourListState.layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }
+            closestItem?.let {
+                selectedHour = it.index % hours.size
+            }
+        }
+    }
+
+    LaunchedEffect(minuteListState.isScrollInProgress) {
+        if (!minuteListState.isScrollInProgress) {
+            val center = minuteListState.layoutInfo.viewportEndOffset / 2
+            val closestItem = minuteListState.layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }
+            closestItem?.let {
+                selectedMinute = it.index % minutes.size
+            }
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
             text = "Turn off playback after:",
             style = MaterialTheme.typography.titleMedium,
-            color = Color.White
-        )
-
-        // Preset buttons
-        val presets = listOf(15, 30, 45, 60)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            presets.forEach { minutes ->
-                Button(
-                    onClick = { onTimerSet(minutes.toLong()) },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = CardBackground
-                    )
-                ) {
-                    Text("${minutes}m")
-                }
-            }
-        }
-
-        HorizontalDivider(color = Color(0xFF3A3A3A), modifier = Modifier.padding(vertical = 8.dp))
-
-        // Custom time
-        Text(
-            text = "Custom time:",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "$customMinutes minutes",
-                style = MaterialTheme.typography.titleMedium,
-                color = DeepBlue
-            )
+            TimeWheelPicker(items = hours, state = hourListState, onValueChange = { selectedHour = it })
+            Text(":", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.onSurface)
+            TimeWheelPicker(items = minutes, state = minuteListState, onValueChange = { selectedMinute = it })
+        }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(
-                    onClick = { if (customMinutes > 5) customMinutes -= 5 }
-                ) {
-                    Text("-", color = Color.White, style = MaterialTheme.typography.headlineSmall)
-                }
-
-                IconButton(
-                    onClick = { if (customMinutes < 180) customMinutes += 5 }
-                ) {
-                    Text("+", color = Color.White, style = MaterialTheme.typography.headlineSmall)
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { onTimerSet(0) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Cancel Timer")
             }
-        }
-
-        Slider(
-            value = customMinutes.toFloat(),
-            onValueChange = { customMinutes = it.toInt() },
-            valueRange = 5f..180f,
-            steps = 35,
-            colors = SliderDefaults.colors(
-                thumbColor = DeepBlue,
-                activeTrackColor = DeepBlue
-            )
-        )
-
-        Button(
-            onClick = { onTimerSet(customMinutes.toLong()) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = DeepBlue
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Set Sleep Timer", fontWeight = FontWeight.Bold)
-        }
-
-        OutlinedButton(
-            onClick = { onTimerSet(0) },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color.White
-            )
-        ) {
-            Text("Cancel Timer")
+            Button(
+                onClick = {
+                    val totalMinutes = selectedHour * 60L + selectedMinute
+                    onTimerSet(totalMinutes)
+                },
+                modifier = Modifier.weight(1f).height(56.dp)
+            ) {
+                Text("Set Timer")
+            }
         }
     }
 }
@@ -202,102 +162,56 @@ private fun SleepTimerTab(onTimerSet: (Long) -> Unit) {
 private fun AlarmTab(
     currentStation: RadioStation?,
     stations: List<RadioStation>,
-    onAlarmSet: (Int, Int, RadioStation) -> Unit
+    onAlarmSet: (Int, Int, RadioStation) -> Unit,
+    onAlarmCancel: () -> Unit
 ) {
+    val hours = (0..23).map { "%02d".format(it) }
+    val minutes = (0..59).map { "%02d".format(it) }
+    
     var selectedHour by remember { mutableStateOf(7) }
     var selectedMinute by remember { mutableStateOf(30) }
+
+    val hourListState = rememberLazyListState(initialFirstVisibleItemIndex = (Int.MAX_VALUE / 2) - (Int.MAX_VALUE / 2 % hours.size) + 7)
+    val minuteListState = rememberLazyListState(initialFirstVisibleItemIndex = (Int.MAX_VALUE / 2) - (Int.MAX_VALUE / 2 % minutes.size) + 30)
+
+    LaunchedEffect(hourListState.isScrollInProgress) {
+        if (!hourListState.isScrollInProgress) {
+            val center = hourListState.layoutInfo.viewportEndOffset / 2
+            val closestItem = hourListState.layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }
+            closestItem?.let {
+                selectedHour = it.index % hours.size
+            }
+        }
+    }
+
+    LaunchedEffect(minuteListState.isScrollInProgress) {
+        if (!minuteListState.isScrollInProgress) {
+            val center = minuteListState.layoutInfo.viewportEndOffset / 2
+            val closestItem = minuteListState.layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }
+            closestItem?.let {
+                selectedMinute = it.index % minutes.size
+            }
+        }
+    }
+    
     var selectedStation by remember { mutableStateOf(currentStation ?: stations.firstOrNull()) }
-    var repeat by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Wake up at:",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White
-        )
-
-        // Time Picker
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Hour picker
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = { selectedHour = (selectedHour + 1) % 24 }) {
-                    Text("▲", color = DeepBlue, style = MaterialTheme.typography.headlineMedium)
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .width(80.dp)
-                        .height(60.dp),
-                    color = CardBackground,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = String.format("%02d", selectedHour),
-                            style = MaterialTheme.typography.displaySmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                IconButton(onClick = { selectedHour = if (selectedHour == 0) 23 else selectedHour - 1 }) {
-                    Text("▼", color = DeepBlue, style = MaterialTheme.typography.headlineMedium)
-                }
-            }
-
-            Text(
-                text = ":",
-                style = MaterialTheme.typography.displayMedium,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            // Minute picker
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = { selectedMinute = (selectedMinute + 5) % 60 }) {
-                    Text("▲", color = DeepBlue, style = MaterialTheme.typography.headlineMedium)
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .width(80.dp)
-                        .height(60.dp),
-                    color = CardBackground,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = String.format("%02d", selectedMinute),
-                            style = MaterialTheme.typography.displaySmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                IconButton(onClick = { selectedMinute = if (selectedMinute == 0) 55 else selectedMinute - 5 }) {
-                    Text("▼", color = DeepBlue, style = MaterialTheme.typography.headlineMedium)
-                }
-            }
+            TimeWheelPicker(items = hours, state = hourListState, onValueChange = { selectedHour = it })
+            Text(":", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.onSurface)
+            TimeWheelPicker(items = minutes, state = minuteListState, onValueChange = { selectedMinute = it })
         }
-
-        HorizontalDivider(color = Color(0xFF3A3A3A))
-
-        // Station selection
-        Text(
-            text = "Play station:",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White
-        )
+        
+        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
 
         ExposedDropdownMenuBox(
             expanded = expanded,
@@ -307,13 +221,11 @@ private fun AlarmTab(
                 value = selectedStation?.name ?: "Select station",
                 onValueChange = {},
                 readOnly = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
+                modifier = Modifier.fillMaxWidth().menuAnchor(),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = DeepBlue,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color(0xFF3A3A3A)
                 ),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
@@ -335,46 +247,27 @@ private fun AlarmTab(
             }
         }
 
-        // Repeat option
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Repeat daily",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White
-            )
-            Switch(
-                checked = repeat,
-                onCheckedChange = { repeat = it },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = DeepBlue,
-                    checkedTrackColor = DeepBlue.copy(alpha = 0.5f)
-                )
-            )
-        }
-
-        Button(
-            onClick = {
-                selectedStation?.let { station ->
-                    onAlarmSet(selectedHour, selectedMinute, station)
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = DeepBlue
-            ),
-            shape = RoundedCornerShape(12.dp),
-            enabled = selectedStation != null
-        ) {
-            Icon(Icons.Filled.Alarm, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Set Alarm", fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onAlarmCancel,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Cancel Alarm")
+            }
+            Button(
+                onClick = {
+                    selectedStation?.let { station ->
+                        onAlarmSet(selectedHour, selectedMinute, station)
+                    }
+                },
+                modifier = Modifier.weight(1f).height(56.dp),
+                enabled = selectedStation != null,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(Icons.Filled.Alarm, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Set Alarm", color = MaterialTheme.colorScheme.onPrimary)
+            }
         }
     }
 }
-
