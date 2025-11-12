@@ -3,6 +3,7 @@ package com.example.paxradio.player
 import android.content.Context
 import android.os.CountDownTimer
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
@@ -10,7 +11,7 @@ import javax.inject.Singleton
 
 @Singleton
 class SleepTimerManager @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
     private var countDownTimer: CountDownTimer? = null
     private val _remainingMillis = MutableStateFlow(0L)
@@ -61,4 +62,3 @@ class SleepTimerManager @Inject constructor(
         return ((_remainingMillis.value % 60000) / 1000).toInt()
     }
 }
-

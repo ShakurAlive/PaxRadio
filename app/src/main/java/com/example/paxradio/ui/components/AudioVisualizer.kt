@@ -2,17 +2,14 @@ package com.example.paxradio.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.paxradio.ui.theme.NeonBlue
-import com.example.paxradio.ui.theme.NeonPurple
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -20,12 +17,21 @@ import kotlin.random.Random
 fun AudioVisualizer(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
-    barCount: Int = 10,
-    barColor: Brush = Brush.verticalGradient(listOf(NeonBlue, NeonPurple)),
-    barWidth: Float = 20f,
-    barSpacing: Float = 10f
+    barCount: Int = 24,
+    maxHeightSegments: Int = 16
 ) {
     val barHeights = remember { mutableStateListOf<Float>() }
+    val colors = remember {
+        listOf(
+            Color(0xFFE57373), Color(0xFFF06292), Color(0xFFBA68C8),
+            Color(0xFF9575CD), Color(0xFF7986CB), Color(0xFF64B5F6),
+            Color(0xFF4FC3F7), Color(0xFF4DD0E1), Color(0xFF4DB6AC),
+            Color(0xFF81C784), Color(0xFFAED581), Color(0xFFFFD54F),
+            Color(0xFFFFB74D), Color(0xFFFF8A65), Color(0xFFA1887F),
+            Color(0xFF90A4AE)
+        ).shuffled()
+    }
+
 
     LaunchedEffect(Unit) {
         repeat(barCount) {
@@ -39,7 +45,11 @@ fun AudioVisualizer(
                 for (i in 0 until barCount) {
                     barHeights[i] = Random.nextFloat()
                 }
-                delay(100)
+                delay(120) // Slower delay for a more classic feel
+            }
+        } else {
+            for (i in 0 until barCount) {
+                barHeights[i] = 0f
             }
         }
     }
@@ -47,23 +57,29 @@ fun AudioVisualizer(
     val animatedBarHeights = barHeights.map {
         animateFloatAsState(
             targetValue = if (isPlaying) it else 0f,
-            animationSpec = tween(durationMillis = 300, easing = LinearEasing)
+            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
         ).value
     }
 
     Canvas(modifier = modifier.fillMaxWidth().height(150.dp)) {
-        val totalWidth = (barWidth + barSpacing) * barCount - barSpacing
-        val startX = (size.width - totalWidth) / 2
+        val segmentSpacing = 2.dp.toPx()
+        val totalSpacing = (barCount - 1) * segmentSpacing
+        val barWidth = (size.width - totalSpacing) / barCount
+        val segmentHeight = size.height / maxHeightSegments
 
-        animatedBarHeights.forEachIndexed { index, height ->
-            val x = startX + index * (barWidth + barSpacing)
-            val y = size.height * (1 - height)
-            drawRoundRect(
-                brush = barColor,
-                topLeft = Offset(x, y),
-                size = Size(barWidth, size.height * height),
-                cornerRadius = CornerRadius(4f, 4f)
-            )
+        animatedBarHeights.forEachIndexed { barIndex, height ->
+            val activeSegments = (height * maxHeightSegments).toInt()
+            val startX = barIndex * (barWidth + segmentSpacing)
+            val barColor = colors[barIndex % colors.size]
+
+            for (segmentIndex in 0 until activeSegments) {
+                val startY = size.height - (segmentIndex + 1) * segmentHeight
+                drawRect(
+                    color = barColor.copy(alpha = 1f - (segmentIndex.toFloat() / maxHeightSegments) * 0.5f),
+                    topLeft = Offset(startX, startY),
+                    size = Size(barWidth, segmentHeight - segmentSpacing)
+                )
+            }
         }
     }
 }

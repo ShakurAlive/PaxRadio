@@ -1,10 +1,7 @@
 package com.example.paxradio.ui.components
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
@@ -14,13 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RadioTopAppBar(
     isPlaying: Boolean,
@@ -29,39 +26,50 @@ fun RadioTopAppBar(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    TopAppBar(
-        title = {
+    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Surface(
+            modifier = Modifier
+                .wrapContentWidth()
+                .height(64.dp)
+                .clip(RoundedCornerShape(50)),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+            tonalElevation = 4.dp
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                if (isPlaying) {
-                    LiveBadge()
+                // Spacer to balance the actions
+                Spacer(modifier = Modifier.width(96.dp))
+
+                // Live Badge
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    if (isPlaying) {
+                        LiveBadge()
+                    }
+                }
+
+                // Action Icons
+                Row(modifier = Modifier.width(96.dp), horizontalArrangement = Arrangement.End) {
+                    IconButton(onClick = onSleepAlarmClick) {
+                        Icon(
+                            imageVector = Icons.Default.Bedtime,
+                            contentDescription = "Sleep & Alarm",
+                            tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary else Color.White
+                        )
+                    }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = Color.White
+                        )
+                    }
                 }
             }
-        },
-        actions = {
-            IconButton(onClick = onSleepAlarmClick) {
-                Icon(
-                    imageVector = Icons.Default.Bedtime,
-                    contentDescription = "Sleep & Alarm",
-                    tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary else Color.White
-                )
-            }
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = Color.White
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-        ),
-        modifier = modifier
-    )
+        }
+    }
 }
 
 @Composable

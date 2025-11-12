@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.PauseCircle
@@ -17,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -83,6 +85,7 @@ private fun AppContent(soundPlayer: SoundPlayer, streamingVm: StreamingViewModel
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainRadioScreen(
     soundPlayer: SoundPlayer,
@@ -117,6 +120,7 @@ private fun MainRadioScreen(
         Scaffold(
             topBar = {
                 RadioTopAppBar(
+                    modifier = Modifier.padding(16.dp),
                     isPlaying = isPlaying,
                     sleepTimerActive = sleepTimerActive,
                     onSleepAlarmClick = { showSleepAlarm = true },
@@ -124,17 +128,20 @@ private fun MainRadioScreen(
                 )
             },
             bottomBar = {
-                BottomActionBar(
-                    isPlaying = isPlaying,
-                    isFmMode = fmMode,
-                    onListClick = { showStationSelector = true },
-                    onPlayPauseClick = { streamingVm.toggle() },
-                    onFmClick = {
-                        fmMode = !fmMode
-                        fmVm.refreshHeadphones()
-                    },
-                    isPlayPauseEnabled = current != null && current!!.isValidUrl
-                )
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    BottomActionBar(
+                        modifier = Modifier.padding(bottom = 16.dp),
+                        isPlaying = isPlaying,
+                        isFmMode = fmMode,
+                        onListClick = { showStationSelector = true },
+                        onPlayPauseClick = { streamingVm.toggle() },
+                        onFmClick = {
+                            fmMode = !fmMode
+                            fmVm.refreshHeadphones()
+                        },
+                        isPlayPauseEnabled = current != null && current!!.isValidUrl
+                    )
+                }
             },
             containerColor = if (theme == AppTheme.BORDEAUX) Color.Transparent else MaterialTheme.colorScheme.background
         ) { padding ->
@@ -185,7 +192,8 @@ private fun MainRadioScreen(
             },
             onAlarmSet = { hour, minute, station ->
                 streamingVm.setAlarm(hour, minute, station)
-            }
+            },
+            onAlarmCancel = { streamingVm.cancelAlarm() }
         )
     }
 }
@@ -202,18 +210,17 @@ private fun BottomActionBar(
 ) {
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .height(80.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+            .wrapContentWidth()
+            .height(80.dp)
+            .clip(RoundedCornerShape(50)), // Fully rounded
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+        tonalElevation = 4.dp
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
+            modifier = Modifier.padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // List Icon
             IconButton(onClick = onListClick) {
                 Icon(
                     Icons.AutoMirrored.Filled.List,
@@ -223,11 +230,12 @@ private fun BottomActionBar(
                 )
             }
 
-            // Play/Pause Button
+            Spacer(modifier = Modifier.width(24.dp))
+
             FilledIconButton(
                 onClick = onPlayPauseClick,
                 enabled = isPlayPauseEnabled,
-                modifier = Modifier.size(80.dp),
+                modifier = Modifier.size(64.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     disabledContainerColor = Color(0xFF3A3A3A)
@@ -237,12 +245,13 @@ private fun BottomActionBar(
                 Icon(
                     imageVector = if (isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
                     contentDescription = if (isPlaying) "Pause" else "Play",
-                    modifier = Modifier.size(50.dp),
+                    modifier = Modifier.size(40.dp),
                     tint = if (isPlayPauseEnabled) MaterialTheme.colorScheme.onPrimary else Color.Gray
                 )
             }
 
-            // FM Icon
+            Spacer(modifier = Modifier.width(24.dp))
+
             IconButton(onClick = onFmClick) {
                 Icon(
                     Icons.Filled.Sensors,
