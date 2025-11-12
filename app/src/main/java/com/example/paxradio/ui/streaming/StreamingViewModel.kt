@@ -14,9 +14,11 @@ import com.example.paxradio.data.RadioStationParser
 import com.example.paxradio.player.RadioPlayer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -34,6 +36,8 @@ class StreamingViewModel @Inject constructor(
 
     private val _playerState = MutableStateFlow<PlayerState>(PlayerState.Idle)
     val playerState = _playerState.asStateFlow()
+
+    val trackTitle = player.trackTitle
 
     private val _volume = MutableStateFlow(0.5f) // Start with a default volume
     val volume = _volume.asStateFlow()
@@ -58,7 +62,11 @@ class StreamingViewModel @Inject constructor(
     }
 
     private fun loadStations() {
-        _stations.value = RadioStationParser.parseFromAssets(context)
+        viewModelScope.launch {
+            _stations.value = withContext(Dispatchers.IO) {
+                RadioStationParser.parseFromAssets(context)
+            }
+        }
     }
 
     fun select(station: RadioStation) {

@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.paxradio.data.RadioStation
 import com.example.paxradio.ui.theme.CardBackground
-import com.example.paxradio.ui.theme.DeepBlue
+import com.example.paxradio.ui.theme.NeonBlue
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +55,7 @@ fun SleepAlarmBottomSheet(
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = CardBackground,
-                contentColor = DeepBlue
+                contentColor = NeonBlue
             ) {
                 Tab(
                     selected = selectedTab == 0,
@@ -143,7 +143,7 @@ private fun SleepTimerTab(onTimerSet: (Long) -> Unit) {
             Text(
                 text = "$customMinutes minutes",
                 style = MaterialTheme.typography.titleMedium,
-                color = DeepBlue
+                color = NeonBlue
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -167,8 +167,8 @@ private fun SleepTimerTab(onTimerSet: (Long) -> Unit) {
             valueRange = 5f..180f,
             steps = 35,
             colors = SliderDefaults.colors(
-                thumbColor = DeepBlue,
-                activeTrackColor = DeepBlue
+                thumbColor = NeonBlue,
+                activeTrackColor = NeonBlue
             )
         )
 
@@ -178,7 +178,7 @@ private fun SleepTimerTab(onTimerSet: (Long) -> Unit) {
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = DeepBlue
+                containerColor = NeonBlue
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -229,7 +229,7 @@ private fun AlarmTab(
             // Hour picker
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { selectedHour = (selectedHour + 1) % 24 }) {
-                    Text("▲", color = DeepBlue, style = MaterialTheme.typography.headlineMedium)
+                    Text("▲", color = NeonBlue, style = MaterialTheme.typography.headlineMedium)
                 }
 
                 Surface(
@@ -250,7 +250,7 @@ private fun AlarmTab(
                 }
 
                 IconButton(onClick = { selectedHour = if (selectedHour == 0) 23 else selectedHour - 1 }) {
-                    Text("▼", color = DeepBlue, style = MaterialTheme.typography.headlineMedium)
+                    Text("▼", color = NeonBlue, style = MaterialTheme.typography.headlineMedium)
                 }
             }
 
@@ -264,7 +264,7 @@ private fun AlarmTab(
             // Minute picker
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { selectedMinute = (selectedMinute + 5) % 60 }) {
-                    Text("▲", color = DeepBlue, style = MaterialTheme.typography.headlineMedium)
+                    Text("▲", color = NeonBlue, style = MaterialTheme.typography.headlineMedium)
                 }
 
                 Surface(
@@ -285,7 +285,7 @@ private fun AlarmTab(
                 }
 
                 IconButton(onClick = { selectedMinute = if (selectedMinute == 0) 55 else selectedMinute - 5 }) {
-                    Text("▼", color = DeepBlue, style = MaterialTheme.typography.headlineMedium)
+                    Text("▼", color = NeonBlue, style = MaterialTheme.typography.headlineMedium)
                 }
             }
         }
@@ -313,7 +313,7 @@ private fun AlarmTab(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedBorderColor = DeepBlue,
+                    focusedBorderColor = NeonBlue,
                     unfocusedBorderColor = Color(0xFF3A3A3A)
                 ),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
@@ -350,8 +350,8 @@ private fun AlarmTab(
                 checked = repeat,
                 onCheckedChange = { repeat = it },
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = DeepBlue,
-                    checkedTrackColor = DeepBlue.copy(alpha = 0.5f)
+                    checkedThumbColor = NeonBlue,
+                    checkedTrackColor = NeonBlue.copy(alpha = 0.5f)
                 )
             )
         }
@@ -366,7 +366,7 @@ private fun AlarmTab(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = DeepBlue
+                containerColor = NeonBlue
             ),
             shape = RoundedCornerShape(12.dp),
             enabled = selectedStation != null
@@ -377,4 +377,3 @@ private fun AlarmTab(
         }
     }
 }
-

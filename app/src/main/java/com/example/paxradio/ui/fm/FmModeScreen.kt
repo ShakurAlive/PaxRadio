@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.paxradio.ui.theme.CardBackground
-import com.example.paxradio.ui.theme.DeepBlue
+import com.example.paxradio.ui.theme.NeonBlue
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.PI
@@ -77,7 +77,7 @@ fun FmModeScreen(
                 text = "%.1f MHz".format(frequency),
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold,
-                color = DeepBlue,
+                color = NeonBlue,
                 fontSize = 48.sp
             )
 
@@ -91,7 +91,7 @@ fun FmModeScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = DeepBlue
+                    containerColor = NeonBlue
                 )
             ) {
                 Text(
@@ -162,7 +162,7 @@ private fun FmFrequencyDial(
             rotate(needleAngle, Offset(centerX, centerY)) {
                 drawLine(
                     brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFF0066CC), Color(0xFF0088FF))
+                        colors = listOf(NeonBlue, Color(0xFF0088FF))
                     ),
                     start = Offset(centerX, centerY),
                     end = Offset(centerX, centerY - radius * 0.8f),
@@ -173,7 +173,7 @@ private fun FmFrequencyDial(
 
             // Center dot
             drawCircle(
-                color = Color(0xFF0066CC),
+                color = NeonBlue,
                 radius = 8.dp.toPx(),
                 center = Offset(centerX, centerY)
             )
@@ -188,11 +188,10 @@ private fun FmFrequencyDial(
             valueRange = 87.5f..108.0f,
             modifier = Modifier.fillMaxWidth(0.8f),
             colors = SliderDefaults.colors(
-                thumbColor = DeepBlue,
-                activeTrackColor = DeepBlue,
+                thumbColor = NeonBlue,
+                activeTrackColor = NeonBlue,
                 inactiveTrackColor = Color(0xFF3A3A3A)
             )
         )
     }
 }
-

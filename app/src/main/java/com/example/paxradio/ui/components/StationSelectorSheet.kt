@@ -10,8 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,7 +26,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.paxradio.data.RadioStation
 import com.example.paxradio.ui.theme.CardBackground
-import com.example.paxradio.ui.theme.DeepBlue
+import com.example.paxradio.ui.theme.NeonBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +57,7 @@ fun StationSelectorSheet(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(stations) { station ->
+                items(stations, key = { it.id }) { station ->
                     StationCard(
                         station = station,
                         isSelected = station.id == currentStation?.id,
@@ -89,7 +87,7 @@ private fun StationCard(
         shape = RoundedCornerShape(16.dp),
         color = when {
             isInvalid -> Color(0xFF3A1A1A) // Red tint for invalid
-            isSelected -> DeepBlue.copy(alpha = 0.3f)
+            isSelected -> NeonBlue.copy(alpha = 0.3f)
             else -> CardBackground
         }
     ) {
@@ -122,7 +120,7 @@ private fun StationCard(
                             Icons.Filled.Mic,
                             contentDescription = null,
                             modifier = Modifier.size(28.dp),
-                            tint = if (isInvalid) Color(0xFFFF6666) else DeepBlue
+                            tint = if (isInvalid) Color(0xFFFF6666) else NeonBlue
                         )
                     }
                 }
@@ -149,7 +147,7 @@ private fun StationCard(
                 Icon(
                     Icons.Filled.Equalizer,
                     contentDescription = "Playing",
-                    tint = DeepBlue,
+                    tint = NeonBlue,
                     modifier = Modifier.size(24.dp)
                 )
             } else if (isInvalid) {
@@ -163,4 +161,3 @@ private fun StationCard(
         }
     }
 }
-
