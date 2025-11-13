@@ -10,8 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +36,17 @@ fun StationSelectorSheet(
     onStationSelect: (RadioStation) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchVisible by remember { mutableStateOf(false) }
+
+    val filteredStations = if (searchQuery.isBlank()) {
+        stations
+    } else {
+        stations.filter {
+            it.name.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color.Black.copy(alpha = 0.5f),
@@ -51,24 +64,70 @@ fun StationSelectorSheet(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                Text(
-                    text = "Select Station",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 16.dp, start = 8.dp)
-                )
-
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    items(stations, key = { it.id }) { station ->
-                        StationCard(
-                            station = station,
-                            isSelected = station.id == currentStation?.id,
-                            onClick = { onStationSelect(station) }
+                    Text(
+                        text = "Выбор станции",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = { isSearchVisible = !isSearchVisible }) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search Station",
+                            tint = Color.White
                         )
+                    }
+                }
+
+                if (isSearchVisible) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Search", color = Color.Gray) },
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        singleLine = true,
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear Search",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color.White,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Gray,
+                        )
+                    )
+                }
+
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(filteredStations, key = { it.id }) { station ->
+                            StationCard(
+                                station = station,
+                                isSelected = station.id == currentStation?.id,
+                                onClick = { onStationSelect(station) }
+                            )
+                        }
                     }
                 }
             }
