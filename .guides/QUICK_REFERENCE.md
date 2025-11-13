@@ -8,7 +8,7 @@
 ./gradlew assembleDebug
 
 # APK Location
-app/build/outputs/apk/debug/app-debug.apk
+app/build/outputs/apk/debug/PaxRadio.v0.33-beta.apk
 ```
 
 ### First Launch
