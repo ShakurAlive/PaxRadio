@@ -1,7 +1,7 @@
-package com.example.paxradio
+package com.pax.radio
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
-class PaxRadioApp : Application()
+class RadioApp : Application()
