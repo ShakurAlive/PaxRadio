@@ -15,7 +15,6 @@ import androidx.media.session.MediaButtonReceiver
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import com.example.paxradio.R
 import com.example.paxradio.data.RadioStation
 import com.example.paxradio.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -92,13 +91,13 @@ class RadioPlaybackService : MediaSessionService() {
 
         val playPauseAction = if (radioPlayer.isPlaying()) {
             NotificationCompat.Action(
-                R.drawable.ic_pause,
+                com.example.paxradio.R.drawable.ic_pause,
                 "Pause",
                 createPlayPauseIntent()
             )
         } else {
             NotificationCompat.Action(
-                R.drawable.ic_play,
+                com.example.paxradio.R.drawable.ic_play,
                 "Play",
                 createPlayPauseIntent()
             )
@@ -107,7 +106,7 @@ class RadioPlaybackService : MediaSessionService() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(currentStation?.name ?: "PaxRadio")
             .setContentText(if (radioPlayer.isPlaying()) "Playing" else "Paused")
-            .setSmallIcon(R.drawable.ic_radio)
+            .setSmallIcon(com.example.paxradio.R.drawable.ic_radio)
             .setContentIntent(contentIntent)
             .addAction(playPauseAction)
             .setStyle(
@@ -134,7 +133,12 @@ class RadioPlaybackService : MediaSessionService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        android.util.Log.d("RadioPlaybackService", "onStartCommand called with action: ${intent?.action}")
         when (intent?.action) {
+            null -> {
+                // Service started without action, just initialize
+                android.util.Log.d("RadioPlaybackService", "Service started without action")
+            }
             ACTION_PLAY_PAUSE -> {
                 if (radioPlayer.isPlaying()) {
                     radioPlayer.pause()
@@ -144,11 +148,57 @@ class RadioPlaybackService : MediaSessionService() {
                 updateNotification()
             }
             ACTION_PLAY_ALARM -> {
-                val stationId = intent.getStringExtra("station_id") ?: ""
-                val stationUrl = intent.getStringExtra("station_url") ?: ""
+                android.util.Log.d("RadioPlaybackService", "ACTION_PLAY_ALARM received")
+                val stationId = intent.getStringExtra(EXTRA_STATION_ID) ?: ""
+                val stationUrl = intent.getStringExtra(EXTRA_STATION_URL) ?: ""
+                val stationName = intent.getStringExtra("station_name") ?: ""
+                android.util.Log.d("RadioPlaybackService", "Station ID: $stationId, URL: $stationUrl")
                 if (stationUrl.isNotEmpty()) {
+                    android.util.Log.d("RadioPlaybackService", "Starting playback...")
+
+                    // Request audio focus
+                    val audioManager = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        val focusRequest = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
+                            .setAudioAttributes(
+                                android.media.AudioAttributes.Builder()
+                                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                                    .build()
+                            )
+                            .build()
+                        audioManager.requestAudioFocus(focusRequest)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        audioManager.requestAudioFocus(
+                            null,
+                            android.media.AudioManager.STREAM_MUSIC,
+                            android.media.AudioManager.AUDIOFOCUS_GAIN
+                        )
+                    }
+
+                    // Set volume
+                    radioPlayer.setVolume(1.0f)
+
+                    // Start playback
                     radioPlayer.play(stationId, stationUrl)
+
+                    // Update current station
+                    currentStation = com.example.paxradio.data.RadioStation(stationId, stationName, stationUrl, "")
+
+                    // Notify UI that playback started
+                    val broadcastIntent = Intent(ACTION_PLAYBACK_STATE_CHANGED).apply {
+                        putExtra(EXTRA_STATION_ID, stationId)
+                        putExtra(EXTRA_STATION_URL, stationUrl)
+                        putExtra("station_name", stationName)
+                        putExtra("is_playing", true)
+                    }
+                    sendBroadcast(broadcastIntent)
+                    android.util.Log.d("RadioPlaybackService", "Broadcast sent to update UI")
+
                     updateNotification()
+                } else {
+                    android.util.Log.e("RadioPlaybackService", "Station URL is empty!")
                 }
             }
         }
@@ -165,7 +215,10 @@ class RadioPlaybackService : MediaSessionService() {
         const val ACTION_PLAY_PAUSE = "com.example.paxradio.ACTION_PLAY_PAUSE"
         const val ACTION_UPDATE_STATION = "com.example.paxradio.ACTION_UPDATE_STATION"
         const val ACTION_PLAY_ALARM = "com.example.paxradio.ACTION_PLAY_ALARM"
+        const val ACTION_PLAYBACK_STATE_CHANGED = "com.example.paxradio.ACTION_PLAYBACK_STATE_CHANGED"
         const val EXTRA_STATION = "extra_station"
+        const val EXTRA_STATION_ID = "station_id"
+        const val EXTRA_STATION_URL = "station_url"
     }
 }
 

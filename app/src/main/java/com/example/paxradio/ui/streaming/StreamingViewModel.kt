@@ -19,6 +19,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
@@ -54,6 +56,7 @@ class StreamingViewModel @Inject constructor(
     init {
         loadStations()
         observeSleepTimer()
+        observePlayerState()
     }
 
     private fun observeSleepTimer() {
@@ -62,6 +65,58 @@ class StreamingViewModel @Inject constructor(
                 _sleepTimerMinutes.value = (millis / 60000).toInt()
             }
         }
+    }
+
+    private fun observePlayerState() {
+        viewModelScope.launch {
+            // Периодически проверяем состояние плеера
+            kotlinx.coroutines.delay(1000)
+            while (true) {
+                try {
+                    ensureActive() // Проверка отмены
+
+                    if (player.isPlaying()) {
+                        if (_playerState.value !is PlayerState.Playing) {
+                            android.util.Log.d("StreamingViewModel", "Player is playing, updating state")
+                            _playerState.value = PlayerState.Playing
+                        }
+
+                        // Если current == null, но плеер играет, нужно найти станцию
+                        if (_current.value == null && player.exoPlayer.currentMediaItem != null) {
+                            val mediaId = player.exoPlayer.currentMediaItem?.mediaId
+                            android.util.Log.d("StreamingViewModel", "Found playing media ID: $mediaId")
+                            if (mediaId != null) {
+                                val station = _stations.value.find { it.id == mediaId }
+                                if (station != null) {
+                                    android.util.Log.d("StreamingViewModel", "Auto-detected station: ${station.name}")
+                                    _current.value = station
+                                }
+                            }
+                        }
+                    } else if (!player.isPlaying() && _playerState.value is PlayerState.Playing) {
+                        _playerState.value = PlayerState.Paused
+                    }
+
+                    kotlinx.coroutines.delay(1000)
+                } catch (e: CancellationException) {
+                    // Coroutine отменена, выходим из цикла
+                    android.util.Log.d("StreamingViewModel", "observePlayerState cancelled")
+                    throw e // Важно: пробрасываем CancellationException дальше
+                } catch (e: Exception) {
+                    android.util.Log.e("StreamingViewModel", "Error in observePlayerState", e)
+                    kotlinx.coroutines.delay(1000)
+                }
+            }
+        }
+    }
+
+    fun syncPlayerState(stationId: String, stationUrl: String, stationName: String) {
+        android.util.Log.d("StreamingViewModel", "syncPlayerState called")
+        val station = _stations.value.find { it.id == stationId }
+            ?: RadioStation(stationId, stationName, stationUrl, "")
+        _current.value = station
+        _playerState.value = PlayerState.Playing
+        android.util.Log.d("StreamingViewModel", "State updated: current=${station.name}, playing=true")
     }
 
     private fun loadStations() {
@@ -142,6 +197,7 @@ class StreamingViewModel @Inject constructor(
         if (durationMillis > 0) {
             sleepTimerManager.startTimer(durationMillis) {
                 player.stop()
+                _current.value = null
                 _playerState.value = PlayerState.Idle
             }
         } else {

@@ -2,7 +2,6 @@ package com.example.paxradio.player.sound
 
 import android.content.Context
 import android.media.SoundPool
-import com.example.paxradio.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,10 +10,23 @@ import javax.inject.Singleton
 class SoundPlayer @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val soundPool = SoundPool.Builder().setMaxStreams(1).build()
-    private val clickSoundId = soundPool.load(context, R.raw.click, 1)
+    private var soundPool: SoundPool? = null
+    private var clickSoundId: Int = -1
+    private var isLoaded = false
+
+    init {
+        // Disable sound loading for now as it causes issues
+        // Sound effects are not critical for app functionality
+        android.util.Log.d("SoundPlayer", "SoundPlayer initialized (sound loading disabled)")
+    }
 
     fun playClick() {
-        soundPool.play(clickSoundId, 1f, 1f, 1, 0, 1f)
+        // Disabled - sound effects not critical
+        // No-op for now
+    }
+
+    fun release() {
+        soundPool?.release()
+        soundPool = null
     }
 }

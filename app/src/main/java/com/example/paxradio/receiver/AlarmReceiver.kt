@@ -20,9 +20,9 @@ class AlarmReceiver : BroadcastReceiver() {
                 // Start playback service
                 val serviceIntent = Intent(context, RadioPlaybackService::class.java).apply {
                     action = RadioPlaybackService.ACTION_PLAY_ALARM
-                    putExtra(EXTRA_STATION_ID, stationId)
-                    putExtra(EXTRA_STATION_NAME, stationName)
-                    putExtra(EXTRA_STATION_URL, stationUrl)
+                    putExtra(RadioPlaybackService.EXTRA_STATION_ID, stationId)
+                    putExtra("station_name", stationName)
+                    putExtra(RadioPlaybackService.EXTRA_STATION_URL, stationUrl)
                 }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -30,6 +30,13 @@ class AlarmReceiver : BroadcastReceiver() {
                 } else {
                     context.startService(serviceIntent)
                 }
+
+                // Launch the activity to bring app to foreground
+                val activityIntent = Intent(context, com.example.paxradio.ui.MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                context.startActivity(activityIntent)
+                Log.d("AlarmReceiver", "Launched MainActivity")
             }
 
             Intent.ACTION_BOOT_COMPLETED -> {

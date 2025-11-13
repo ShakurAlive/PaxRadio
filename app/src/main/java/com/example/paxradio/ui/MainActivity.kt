@@ -28,7 +28,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.paxradio.R
 import com.example.paxradio.data.AppTheme
 import com.example.paxradio.data.PlayerState
 import com.example.paxradio.player.RadioPlaybackService
@@ -50,12 +49,47 @@ class MainActivity : ComponentActivity() {
     lateinit var soundPlayer: SoundPlayer
     private val streamingVm: StreamingViewModel by viewModels()
 
+    private val playbackStateReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            if (intent?.action == RadioPlaybackService.ACTION_PLAYBACK_STATE_CHANGED) {
+                val stationId = intent.getStringExtra(RadioPlaybackService.EXTRA_STATION_ID) ?: ""
+                val stationUrl = intent.getStringExtra(RadioPlaybackService.EXTRA_STATION_URL) ?: ""
+                val stationName = intent.getStringExtra("station_name") ?: ""
+                val isPlaying = intent.getBooleanExtra("is_playing", false)
+
+                android.util.Log.d("MainActivity", "Broadcast received: $stationName, playing=$isPlaying")
+
+                if (isPlaying) {
+                    streamingVm.syncPlayerState(stationId, stationUrl, stationName)
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         val serviceIntent = Intent(this, RadioPlaybackService::class.java)
         startService(serviceIntent)
+
+        // Register broadcast receiver
+        val filter = android.content.IntentFilter(RadioPlaybackService.ACTION_PLAYBACK_STATE_CHANGED)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(playbackStateReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(playbackStateReceiver, filter)
+        }
+
         setContent { AppContent(soundPlayer, streamingVm) }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(playbackStateReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Receiver was not registered, ignore
+        }
     }
 }
 
@@ -110,7 +144,7 @@ private fun MainRadioScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         if (theme == AppTheme.BORDEAUX) {
             Image(
-                painter = painterResource(id = R.drawable.bg_bordeaux),
+                painter = painterResource(id = com.example.paxradio.R.drawable.bg_bordeaux),
                 contentDescription = "Background",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
@@ -187,8 +221,8 @@ private fun MainRadioScreen(
             currentStation = current,
             stations = stations,
             onDismiss = { showSleepAlarm = false },
-            onSleepTimerSet = { minutes ->
-                streamingVm.setSleepTimer(minutes)
+            onSleepTimerSet = { durationMillis ->
+                streamingVm.setSleepTimer(durationMillis)
             },
             onAlarmSet = { hour, minute, station ->
                 streamingVm.setAlarm(hour, minute, station)

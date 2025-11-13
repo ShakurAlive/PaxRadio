@@ -140,18 +140,22 @@ private fun SleepTimerTab(onTimerSet: (Long) -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = { onTimerSet(0) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).height(56.dp)
             ) {
-                Text("Cancel Timer")
+                Text("Cancel")
             }
             Button(
                 onClick = {
                     val totalMinutes = selectedHour * 60L + selectedMinute
-                    onTimerSet(totalMinutes)
+                    val totalMillis = totalMinutes * 60000L
+                    onTimerSet(totalMillis)
                 },
-                modifier = Modifier.weight(1f).height(56.dp)
+                modifier = Modifier.weight(1f).height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Set Timer")
+                Icon(Icons.Filled.Bedtime, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Save", color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
@@ -250,9 +254,9 @@ private fun AlarmTab(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = onAlarmCancel,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).height(56.dp)
             ) {
-                Text("Cancel Alarm")
+                Text("Cancel")
             }
             Button(
                 onClick = {
@@ -266,7 +270,7 @@ private fun AlarmTab(
             ) {
                 Icon(Icons.Filled.Alarm, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Set Alarm", color = MaterialTheme.colorScheme.onPrimary)
+                Text("Save", color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
