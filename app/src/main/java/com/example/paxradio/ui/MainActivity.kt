@@ -73,14 +73,19 @@ class MainActivity : ComponentActivity() {
         startService(serviceIntent)
 
         // Register broadcast receiver
-        val filter = android.content.IntentFilter(RadioPlaybackService.ACTION_PLAYBACK_STATE_CHANGED)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(playbackStateReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(playbackStateReceiver, filter)
-        }
+        registerPlaybackReceiver()
 
         setContent { AppContent(soundPlayer, streamingVm) }
+    }
+
+    private fun registerPlaybackReceiver() {
+        val filter = android.content.IntentFilter(RadioPlaybackService.ACTION_PLAYBACK_STATE_CHANGED)
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            playbackStateReceiver,
+            filter,
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     override fun onDestroy() {
