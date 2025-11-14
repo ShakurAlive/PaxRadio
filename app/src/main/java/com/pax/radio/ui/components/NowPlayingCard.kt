@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +29,8 @@ import com.pax.radio.ui.theme.CardBackground
 fun NowPlayingCard(
     station: RadioStation?,
     trackTitle: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleFavorite: () -> Unit = {}
 ) {
     Card(
         modifier = modifier
@@ -36,41 +39,60 @@ fun NowPlayingCard(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground.copy(alpha = 0.6f))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Station Logo
-            StationLogo(
-                imageUrl = station?.imageUrl,
-                stationName = station?.name ?: "Select Station"
-            )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Station Logo
+                StationLogo(
+                    imageUrl = station?.imageUrl,
+                    stationName = station?.name ?: "Select Station"
+                )
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // Station Name
-            Text(
-                text = station?.name ?: "Станция не выбрана",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                fontSize = 28.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+                // Station Name
+                Text(
+                    text = station?.name ?: "Станция не выбрана",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontSize = 28.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            // Track info
-            Text(
-                text = trackTitle ?: "Radio Stream",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFB0B0B0),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+                // Track info
+                Text(
+                    text = trackTitle ?: "Radio Stream",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFB0B0B0),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Favorite button (top right corner)
+            if (station != null) {
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (station.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (station.isFavorite) "Remove from favorites" else "Add to favorites",
+                        tint = if (station.isFavorite) Color(0xFFFFD700) else Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
         }
     }
 }

@@ -68,6 +68,14 @@ class StreamingViewModel @Inject constructor(
                 }
                 // Сортируем: избранные вначале
                 _stations.value = updatedStations.sortedByDescending { it.isFavorite }
+
+                // ВАЖНО: Обновляем текущую станцию если она есть
+                _current.value?.let { currentStation ->
+                    val updatedCurrent = updatedStations.find { it.id == currentStation.id }
+                    if (updatedCurrent != null) {
+                        _current.value = updatedCurrent
+                    }
+                }
             }
         }
     }
@@ -76,6 +84,48 @@ class StreamingViewModel @Inject constructor(
         viewModelScope.launch {
             favoritesRepository.toggleFavorite(stationId)
         }
+    }
+
+    // === Navigation between stations ===
+    fun hasNext(): Boolean = _current.value != null && _stations.value.size > 1
+    fun hasPrevious(): Boolean = hasNext()
+
+    fun selectNext() {
+        val stations = _stations.value
+        val currentStation = _current.value ?: return
+        if (stations.isEmpty()) return
+        val idx = stations.indexOfFirst { it.id == currentStation.id }
+        if (idx == -1) return
+        val nextIdx = (idx + 1) % stations.size // wrap-around
+        select(stations[nextIdx])
+    }
+
+    fun selectPrevious() {
+        val stations = _stations.value
+        val currentStation = _current.value ?: return
+        if (stations.isEmpty()) return
+        val idx = stations.indexOfFirst { it.id == currentStation.id }
+        if (idx == -1) return
+        val prevIdx = (idx - 1 + stations.size) % stations.size // wrap-around
+        select(stations[prevIdx])
+    }
+
+    fun selectRandom() {
+        val stations = _stations.value
+        if (stations.isEmpty()) return
+        val validStations = stations.filter { it.isValidUrl }
+        if (validStations.isEmpty()) return
+
+        // Выбираем случайную станцию, отличную от текущей
+        val currentId = _current.value?.id
+        val availableStations = if (validStations.size > 1 && currentId != null) {
+            validStations.filter { it.id != currentId }
+        } else {
+            validStations
+        }
+
+        val randomStation = availableStations.random()
+        select(randomStation)
     }
 
     private fun observePlayerState() {
