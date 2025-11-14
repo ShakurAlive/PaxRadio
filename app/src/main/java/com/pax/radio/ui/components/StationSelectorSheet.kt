@@ -1,7 +1,6 @@
 package com.pax.radio.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,6 +17,8 @@ import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ fun StationSelectorSheet(
     stations: List<RadioStation>,
     currentStation: RadioStation?,
     onStationSelect: (RadioStation) -> Unit,
+    onToggleFavorite: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var searchExpanded by remember { mutableStateOf(false) }
@@ -142,7 +144,8 @@ fun StationSelectorSheet(
                         StationCard(
                             station = station,
                             isSelected = station.id == currentStation?.id,
-                            onClick = { onStationSelect(station) }
+                            onClick = { onStationSelect(station) },
+                            onToggleFavorite = { onToggleFavorite(station.id) }
                         )
                     }
 
@@ -172,7 +175,8 @@ fun StationSelectorSheet(
 private fun StationCard(
     station: RadioStation,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     val context = LocalContext.current
     val isInvalid = !station.isValidUrl
@@ -236,6 +240,19 @@ private fun StationCard(
                     text = if (isInvalid) "No stream available" else station.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isInvalid) Color(0xFFCC6666) else Color(0xFFB0B0B0)
+                )
+            }
+
+            // Иконка избранного
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = if (station.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = if (station.isFavorite) "Убрать из избранного" else "Добавить в избранное",
+                    tint = if (station.isFavorite) Color(0xFFFFD700) else Color.Gray,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 

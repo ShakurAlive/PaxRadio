@@ -28,7 +28,8 @@ import javax.inject.Inject
 class StreamingViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val player: RadioPlayer,
-    private val sleepTimerManager: SleepTimerManager
+    private val sleepTimerManager: SleepTimerManager,
+    private val favoritesRepository: com.pax.radio.data.FavoritesRepository
 ) : ViewModel() {
 
     private val _stations = MutableStateFlow<List<RadioStation>>(emptyList())
@@ -55,6 +56,26 @@ class StreamingViewModel @Inject constructor(
         loadStations()
         observeSleepTimer()
         observePlayerState()
+        observeFavorites()
+    }
+
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            favoritesRepository.favoriteIds.collect { favoriteIds ->
+                // Обновляем список станций с учетом избранного
+                val updatedStations = _stations.value.map { station ->
+                    station.copy(isFavorite = favoriteIds.contains(station.id))
+                }
+                // Сортируем: избранные вначале
+                _stations.value = updatedStations.sortedByDescending { it.isFavorite }
+            }
+        }
+    }
+
+    fun toggleFavorite(stationId: String) {
+        viewModelScope.launch {
+            favoritesRepository.toggleFavorite(stationId)
+        }
     }
 
     private fun observePlayerState() {

@@ -209,6 +209,9 @@ private fun MainRadioScreen(
                 streamingVm.select(it)
                 showStationSelector = false
             },
+            onToggleFavorite = { stationId ->
+                streamingVm.toggleFavorite(stationId)
+            },
             onDismiss = { showStationSelector = false }
         )
     }
