@@ -11,10 +11,10 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.paxradio"
+        applicationId = "com.pax.radio"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
