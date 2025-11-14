@@ -174,6 +174,7 @@ class RadioPlaybackService : MediaSessionService() {
 
                     // Notify UI that playback started
                     val broadcastIntent = Intent(ACTION_PLAYBACK_STATE_CHANGED).apply {
+                        setPackage(packageName)
                         putExtra(EXTRA_STATION_ID, stationId)
                         putExtra(EXTRA_STATION_URL, stationUrl)
                         putExtra("station_name", stationName)
