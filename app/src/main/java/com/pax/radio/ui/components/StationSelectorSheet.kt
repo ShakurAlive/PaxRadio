@@ -1,5 +1,10 @@
 package com.pax.radio.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,11 +12,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,12 +41,27 @@ fun StationSelectorSheet(
     stations: List<RadioStation>,
     currentStation: RadioStation?,
     onStationSelect: (RadioStation) -> Unit,
+    onToggleFavorite: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var searchExpanded by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredStations = remember(stations, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            stations
+        } else {
+            stations.filter {
+                it.name.contains(searchQuery, ignoreCase = true) ||
+                it.description.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color.Black.copy(alpha = 0.5f),
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false) // Allow half-expansion
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     ) {
         Card(
             modifier = Modifier
@@ -51,24 +75,95 @@ fun StationSelectorSheet(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                Text(
-                    text = "Select Station",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 16.dp, start = 8.dp)
-                )
+                // Header with title and search
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp, start = 8.dp, end = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AnimatedVisibility(
+                        visible = !searchExpanded,
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally()
+                    ) {
+                        Text(
+                            text = "Выбор станции",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = searchExpanded,
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Поиск станции...", color = Color.Gray) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(end = 8.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = Color.Gray
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = {
+                            searchExpanded = !searchExpanded
+                            if (!searchExpanded) {
+                                searchQuery = ""
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (searchExpanded) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = if (searchExpanded) "Закрыть поиск" else "Открыть поиск",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
 
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(stations, key = { it.id }) { station ->
+                    items(filteredStations, key = { it.id }) { station ->
                         StationCard(
                             station = station,
                             isSelected = station.id == currentStation?.id,
-                            onClick = { onStationSelect(station) }
+                            onClick = { onStationSelect(station) },
+                            onToggleFavorite = { onToggleFavorite(station.id) }
                         )
+                    }
+
+                    if (filteredStations.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Станции не найдены",
+                                    color = Color.Gray,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -80,7 +175,8 @@ fun StationSelectorSheet(
 private fun StationCard(
     station: RadioStation,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     val context = LocalContext.current
     val isInvalid = !station.isValidUrl
@@ -144,6 +240,19 @@ private fun StationCard(
                     text = if (isInvalid) "No stream available" else station.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isInvalid) Color(0xFFCC6666) else Color(0xFFB0B0B0)
+                )
+            }
+
+            // Иконка избранного
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = if (station.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = if (station.isFavorite) "Убрать из избранного" else "Добавить в избранное",
+                    tint = if (station.isFavorite) Color(0xFFFFD700) else Color.Gray,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 

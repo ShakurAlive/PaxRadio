@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,7 +25,9 @@ fun RadioTopAppBar(
     sleepTimerActive: Boolean,
     onSleepAlarmClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isFmMode: Boolean = false,
+    onFmClick: () -> Unit = {}
 ) {
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Surface(
@@ -36,22 +39,41 @@ fun RadioTopAppBar(
             tonalElevation = 4.dp
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Spacer to balance the actions
-                Spacer(modifier = Modifier.width(96.dp))
+                // FM Radio button (left) - фиксированная ширина
+                Box(
+                    modifier = Modifier.width(48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    IconButton(onClick = onFmClick) {
+                        Icon(
+                            imageVector = Icons.Default.Sensors,
+                            contentDescription = "FM Radio",
+                            tint = if (isFmMode) MaterialTheme.colorScheme.primary else Color.White
+                        )
+                    }
+                }
 
-                // Live Badge
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                // Live Badge - центрированный с weight
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     if (isPlaying) {
                         LiveBadge()
                     }
                 }
 
-                // Action Icons
-                Row(modifier = Modifier.width(96.dp), horizontalArrangement = Arrangement.End) {
+                // Action Icons - фиксированная ширина справа (2 кнопки по 48dp)
+                Box(
+                    modifier = Modifier.width(96.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Row(horizontalArrangement = Arrangement.End) {
                     IconButton(onClick = onSleepAlarmClick) {
                         Icon(
                             imageVector = Icons.Default.Bedtime,
@@ -65,6 +87,7 @@ fun RadioTopAppBar(
                             contentDescription = "Settings",
                             tint = Color.White
                         )
+                    }
                     }
                 }
             }

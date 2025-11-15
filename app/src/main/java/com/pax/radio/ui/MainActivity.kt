@@ -14,6 +14,9 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -75,11 +79,12 @@ class MainActivity : ComponentActivity() {
 
         // Register broadcast receiver
         val filter = android.content.IntentFilter(com.pax.radio.player.RadioPlaybackService.ACTION_PLAYBACK_STATE_CHANGED)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(playbackStateReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(playbackStateReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            this,
+            playbackStateReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         setContent { AppContent(soundPlayer, streamingVm) }
     }
@@ -155,7 +160,12 @@ private fun MainRadioScreen(
                     isPlaying = isPlaying,
                     sleepTimerActive = sleepTimerActive,
                     onSleepAlarmClick = { showSleepAlarm = true },
-                    onSettingsClick = onNavigateToSettings
+                    onSettingsClick = onNavigateToSettings,
+                    isFmMode = fmMode,
+                    onFmClick = {
+                        fmMode = !fmMode
+                        fmVm.refreshHeadphones()
+                    }
                 )
             },
             bottomBar = {
@@ -166,11 +176,12 @@ private fun MainRadioScreen(
                         isFmMode = fmMode,
                         onListClick = { showStationSelector = true },
                         onPlayPauseClick = { streamingVm.toggle() },
-                        onFmClick = {
-                            fmMode = !fmMode
-                            fmVm.refreshHeadphones()
-                        },
-                        isPlayPauseEnabled = current != null && current!!.isValidUrl
+                        isPlayPauseEnabled = current != null && current!!.isValidUrl,
+                        onPrevClick = { streamingVm.selectPrevious() },
+                        onNextClick = { streamingVm.selectNext() },
+                        onShuffleClick = { streamingVm.selectRandom() },
+                        prevEnabled = streamingVm.hasPrevious(),
+                        nextEnabled = streamingVm.hasNext()
                     )
                 }
             },
@@ -193,7 +204,10 @@ private fun MainRadioScreen(
                 } else {
                     NowPlayingCard(
                         station = current,
-                        trackTitle = trackTitle
+                        trackTitle = trackTitle,
+                        onToggleFavorite = {
+                            current?.let { streamingVm.toggleFavorite(it.id) }
+                        }
                     )
                     AudioVisualizer(isPlaying = isPlaying)
                 }
@@ -208,6 +222,9 @@ private fun MainRadioScreen(
             onStationSelect = {
                 streamingVm.select(it)
                 showStationSelector = false
+            },
+            onToggleFavorite = { stationId ->
+                streamingVm.toggleFavorite(stationId)
             },
             onDismiss = { showStationSelector = false }
         )
@@ -236,59 +253,94 @@ private fun BottomActionBar(
     isPlayPauseEnabled: Boolean,
     onListClick: () -> Unit,
     onPlayPauseClick: () -> Unit,
-    onFmClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPrevClick: () -> Unit = {},
+    onNextClick: () -> Unit = {},
+    onShuffleClick: () -> Unit = {},
+    prevEnabled: Boolean = true,
+    nextEnabled: Boolean = true
 ) {
     Surface(
         modifier = modifier
             .wrapContentWidth()
-            .height(80.dp)
-            .clip(RoundedCornerShape(50)), // Fully rounded
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-        tonalElevation = 4.dp
+            .height(84.dp)
+            .clip(RoundedCornerShape(50)),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        tonalElevation = 6.dp
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Station List button (слева)
             IconButton(onClick = onListClick) {
                 Icon(
                     Icons.AutoMirrored.Filled.List,
                     contentDescription = "Station List",
                     tint = if (!isFmMode) Color.White else Color.Gray,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(38.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(24.dp))
-
-            FilledIconButton(
-                onClick = onPlayPauseClick,
-                enabled = isPlayPauseEnabled,
-                modifier = Modifier.size(64.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = Color(0xFF3A3A3A)
-                ),
-                shape = CircleShape
+            // Центрированная группа: Prev, Play/Pause, Next
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                    modifier = Modifier.size(40.dp),
-                    tint = if (isPlayPauseEnabled) MaterialTheme.colorScheme.onPrimary else Color.Gray
-                )
+                // Previous station
+                IconButton(onClick = onPrevClick, enabled = prevEnabled) {
+                    Icon(
+                        Icons.Filled.SkipPrevious,
+                        contentDescription = "Previous Station",
+                        tint = if (prevEnabled) Color.White else Color.Gray,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Play/Pause center
+                FilledIconButton(
+                    onClick = onPlayPauseClick,
+                    enabled = isPlayPauseEnabled,
+                    modifier = Modifier.size(78.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = Color(0xFF3A3A3A)
+                    ),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        modifier = Modifier.size(48.dp),
+                        tint = if (isPlayPauseEnabled) MaterialTheme.colorScheme.onPrimary else Color.Gray
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Next station
+                IconButton(onClick = onNextClick, enabled = nextEnabled) {
+                    Icon(
+                        Icons.Filled.SkipNext,
+                        contentDescription = "Next Station",
+                        tint = if (nextEnabled) Color.White else Color.Gray,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.width(24.dp))
-
-            IconButton(onClick = onFmClick) {
+            // Shuffle button (справа)
+            IconButton(onClick = onShuffleClick) {
                 Icon(
-                    Icons.Filled.Sensors,
-                    contentDescription = "FM Radio",
-                    tint = if (isFmMode) Color.White else Color.Gray,
-                    modifier = Modifier.size(32.dp)
+                    Icons.Filled.Shuffle,
+                    contentDescription = "Random Station",
+                    tint = Color.White,
+                    modifier = Modifier.size(38.dp)
                 )
             }
         }

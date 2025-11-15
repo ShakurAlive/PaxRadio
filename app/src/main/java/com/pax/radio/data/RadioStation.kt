@@ -5,7 +5,8 @@ data class RadioStation(
     val name: String,
     val streamUrl: String,
     val description: String,
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val isFavorite: Boolean = false
 ) {
     val isValidUrl: Boolean
         get() = streamUrl.isNotBlank() &&
