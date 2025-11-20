@@ -15,12 +15,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pax.radio.data.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToThemes: () -> Unit,
+    onNavigateToGeneral: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     Scaffold(
@@ -54,72 +55,37 @@ fun SettingsScreen(
                 HorizontalDivider(color = Color.Gray.copy(alpha = 0.3f))
 
                 // Settings Items
-                var selectedTabIndex by remember { mutableStateOf(0) }
-                val tabs = listOf("Appearance", "General", "About")
-
-                TabRow(selectedTabIndex = selectedTabIndex) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(title) }
-                        )
+                LazyColumn {
+                    item {
+                        SettingsItem(title = "Основные") {
+                            onNavigateToGeneral()
+                        }
+                    }
+                    item {
+                        SettingsItem(title = "Темы") {
+                            onNavigateToThemes()
+                        }
                     }
                 }
-                when (selectedTabIndex) {
-                    0 -> AppearanceSettings(viewModel = viewModel)
-                    1 -> GeneralSettings()
-                    2 -> AboutSettings()
-                }
             }
         }
     }
 }
 
 @Composable
-private fun AppearanceSettings(viewModel: SettingsViewModel) {
-    val currentTheme by viewModel.theme.collectAsState()
-    LazyColumn(
+fun SettingsItem(title: String, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        item {
-            Text("Select Theme", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        items(AppTheme.values()) { theme ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { viewModel.setTheme(theme) }
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(theme.name.lowercase().replaceFirstChar { it.titlecase() }, style = MaterialTheme.typography.bodyLarge)
-                RadioButton(
-                    selected = currentTheme == theme,
-                    onClick = { viewModel.setTheme(theme) }
-                )
-            }
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.White
+        )
     }
 }
 
-@Composable
-private fun GeneralSettings() {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("General Settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        // Add general settings here later
-    }
-}
-
-@Composable
-private fun AboutSettings() {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        // Add about info here later
-    }
-}

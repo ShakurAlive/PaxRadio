@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <Preference
+        android:key="main"
+        android:title="Основные"
+        android:summary="Основные настройки приложения"/>
+
+    <Preference
+        android:key="themes"
+        android:title="Темы"
+        android:summary="Настройте внешний вид приложения"/>
+
+</PreferenceScreen>

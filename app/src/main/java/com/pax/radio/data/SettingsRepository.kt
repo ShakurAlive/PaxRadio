@@ -23,7 +23,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     val selectedTheme: Flow<String> = context.dataStore.data
         .map { preferences ->
-            preferences[PreferencesKeys.SELECTED_THEME] ?: AppTheme.NEON.name
+            preferences[PreferencesKeys.SELECTED_THEME] ?: "Default"
         }
 
     suspend fun setSelectedTheme(themeName: String) {
@@ -33,7 +33,3 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 }
 
-enum class AppTheme {
-    NEON,
-    BORDEAUX
-}

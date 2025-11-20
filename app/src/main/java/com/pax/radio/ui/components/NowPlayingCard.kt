@@ -66,7 +66,7 @@ fun NowPlayingCard(
                     text = mainName,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 28.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -76,7 +76,7 @@ fun NowPlayingCard(
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 18.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -97,7 +97,7 @@ fun NowPlayingCard(
                 Text(
                     text = statusText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFFB0B0B0),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

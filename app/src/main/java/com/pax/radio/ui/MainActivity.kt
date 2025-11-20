@@ -33,15 +33,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pax.radio.R
-import com.pax.radio.data.AppTheme
 import com.pax.radio.data.PlayerState
 import com.pax.radio.player.RadioPlaybackService
 import com.pax.radio.player.sound.SoundPlayer
 import com.pax.radio.ui.components.*
 import com.pax.radio.ui.fm.FmModeScreen
 import com.pax.radio.ui.fm.FmRadioViewModel
+import com.pax.radio.ui.navigation.NavRoute
 import com.pax.radio.ui.settings.SettingsScreen
 import com.pax.radio.ui.settings.SettingsViewModel
+import com.pax.radio.ui.settings.ThemesScreen
 import com.pax.radio.ui.streaming.StreamingViewModel
 import com.pax.radio.ui.theme.PaxRadioTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -98,24 +99,33 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppContent(soundPlayer: SoundPlayer, streamingVm: StreamingViewModel) {
     val settingsViewModel: SettingsViewModel = hiltViewModel()
-    val theme by settingsViewModel.theme.collectAsState()
+    val themeName by settingsViewModel.theme.collectAsState()
 
-    PaxRadioTheme(appTheme = theme) {
+    PaxRadioTheme(themeName = themeName) {
         val navController = rememberNavController()
 
-        NavHost(navController = navController, startDestination = "main") {
-            composable("main") {
+        NavHost(navController = navController, startDestination = NavRoute.Streaming.route) {
+            composable(NavRoute.Streaming.route) {
                 MainRadioScreen(
                     soundPlayer = soundPlayer,
                     streamingVm = streamingVm,
-                    theme = theme,
-                    onNavigateToSettings = { navController.navigate("settings") }
+                    onNavigateToSettings = { navController.navigate(NavRoute.Settings.route) }
                 )
             }
-            composable("settings") {
+            composable(NavRoute.Settings.route) {
                 SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToThemes = { navController.navigate(NavRoute.Themes.route) },
+                    onNavigateToGeneral = { navController.navigate(NavRoute.General.route) }
+                )
+            }
+            composable(NavRoute.Themes.route) {
+                ThemesScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
+            }
+            composable(NavRoute.General.route) {
+                // TODO: Create GeneralSettingsScreen
             }
         }
     }
@@ -126,7 +136,6 @@ private fun AppContent(soundPlayer: SoundPlayer, streamingVm: StreamingViewModel
 private fun MainRadioScreen(
     soundPlayer: SoundPlayer,
     streamingVm: StreamingViewModel,
-    theme: AppTheme,
     onNavigateToSettings: () -> Unit
 ) {
     val fmVm: FmRadioViewModel = hiltViewModel()
@@ -144,15 +153,6 @@ private fun MainRadioScreen(
     val isPlaying = playerState is PlayerState.Playing
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (theme == AppTheme.BORDEAUX) {
-            Image(
-                painter = painterResource(id = R.drawable.bg_bordeaux),
-                contentDescription = "Background",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
         Scaffold(
             topBar = {
                 RadioTopAppBar(
@@ -185,7 +185,7 @@ private fun MainRadioScreen(
                     )
                 }
             },
-            containerColor = if (theme == AppTheme.BORDEAUX) Color.Transparent else MaterialTheme.colorScheme.background
+            containerColor = Color.Transparent
         ) { padding ->
             Column(
                 modifier = Modifier
@@ -286,11 +286,11 @@ private fun BottomActionBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Station List button (слева)
-            IconButton(onClick = onListClick) {
+            IconButton(onClick = onListClick, enabled = !isFmMode) {
                 Icon(
                     Icons.AutoMirrored.Filled.List,
                     contentDescription = "Station List",
-                    tint = if (!isFmMode) Color.White else Color.Gray,
+                    tint = if (!isFmMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.size(38.dp)
                 )
             }
@@ -301,56 +301,44 @@ private fun BottomActionBar(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Previous station
-                IconButton(onClick = onPrevClick, enabled = prevEnabled) {
+                IconButton(onClick = onPrevClick, enabled = prevEnabled && !isFmMode) {
                     Icon(
-                        Icons.Filled.SkipPrevious,
-                        contentDescription = "Previous Station",
-                        tint = if (prevEnabled) Color.White else Color.Gray,
-                        modifier = Modifier.size(36.dp)
+                        Icons.Default.SkipPrevious,
+                        contentDescription = "Previous",
+                        tint = if (prevEnabled && !isFmMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.size(42.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Play/Pause center
-                FilledIconButton(
-                    onClick = onPlayPauseClick,
-                    enabled = isPlayPauseEnabled,
-                    modifier = Modifier.size(78.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        disabledContainerColor = Color(0xFF3A3A3A)
-                    ),
-                    shape = CircleShape
-                ) {
+                IconButton(onClick = onPlayPauseClick, enabled = isPlayPauseEnabled) {
                     Icon(
-                        imageVector = if (isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                        modifier = Modifier.size(48.dp),
-                        tint = if (isPlayPauseEnabled) MaterialTheme.colorScheme.onPrimary else Color.Gray
+                        imageVector = if (isPlaying) Icons.Default.PauseCircle else Icons.Default.PlayCircle,
+                        contentDescription = "Play/Pause",
+                        tint = if (isPlayPauseEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.size(64.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Next station
-                IconButton(onClick = onNextClick, enabled = nextEnabled) {
+                IconButton(onClick = onNextClick, enabled = nextEnabled && !isFmMode) {
                     Icon(
-                        Icons.Filled.SkipNext,
-                        contentDescription = "Next Station",
-                        tint = if (nextEnabled) Color.White else Color.Gray,
-                        modifier = Modifier.size(36.dp)
+                        Icons.Default.SkipNext,
+                        contentDescription = "Next",
+                        tint = if (nextEnabled && !isFmMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.size(42.dp)
                     )
                 }
             }
 
             // Shuffle button (справа)
-            IconButton(onClick = onShuffleClick) {
+            IconButton(onClick = onShuffleClick, enabled = !isFmMode) {
                 Icon(
-                    Icons.Filled.Shuffle,
-                    contentDescription = "Random Station",
-                    tint = Color.White,
+                    Icons.Default.Shuffle,
+                    contentDescription = "Shuffle",
+                    tint = if (!isFmMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.size(38.dp)
                 )
             }

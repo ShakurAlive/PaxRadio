@@ -53,7 +53,7 @@ fun RadioTopAppBar(
                         Icon(
                             imageVector = Icons.Default.Sensors,
                             contentDescription = "FM Radio",
-                            tint = if (isFmMode) MaterialTheme.colorScheme.primary else Color.White
+                            tint = if (isFmMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -78,14 +78,14 @@ fun RadioTopAppBar(
                         Icon(
                             imageVector = Icons.Default.Bedtime,
                             contentDescription = "Sleep & Alarm",
-                            tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary else Color.White
+                            tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(onClick = onSettingsClick) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     }

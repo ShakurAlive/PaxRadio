@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<themes>
+    <theme
+        name="Default"
+        backgroundImage="bg_bordeaux"
+        backgroundColor="#1C1C1E"
+        primaryTextColor="#d9d2d2"
+        secondaryTextColor="#d9d2d2" />
+    <theme
+        name="Dark"
+        backgroundImage="dark"
+        backgroundColor="#1C1C1E"
+        primaryTextColor="#d9d2d2"
+        secondaryTextColor="#d9d2d2" />
+    <theme
+        name="Bordeaux"
+        backgroundImage="bg_bordeaux"
+        backgroundColor="#6D0000"
+        primaryTextColor="#FFFFFF"
+        secondaryTextColor="#E0E0E0" />
+    <theme
+        name="Gray"
+        backgroundImage="gray"
+        backgroundColor="#787878"
+        primaryTextColor="#121212"
+        secondaryTextColor="#6F6F6F" />
+    <theme
+        name="Green"
+        backgroundImage="green"
+        backgroundColor="#00313f"
+        primaryTextColor="#008221"
+        secondaryTextColor="#00c72a" />
+</themes>
+

@@ -117,7 +117,7 @@ fun StationSelectorSheet(
                             text = "Выбор станции",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -133,11 +133,11 @@ fun StationSelectorSheet(
                             modifier = Modifier.fillMaxWidth(0.8f),
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                cursorColor = Color.White,
-                                focusedBorderColor = Color.White,
-                                unfocusedBorderColor = Color.Gray
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                     }
@@ -146,7 +146,7 @@ fun StationSelectorSheet(
                         Icon(
                             imageVector = if (searchExpanded) Icons.Default.Close else Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -165,7 +165,7 @@ fun StationSelectorSheet(
                             ) {
                                 Text(
                                     text = "Станции не найдены",
-                                    color = Color.Gray,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             }
@@ -232,14 +232,14 @@ fun GroupItem(
                     Icon(
                         imageVector = Icons.Default.Mic,
                         contentDescription = "Loading",
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 error = {
                     Icon(
                         imageVector = Icons.Default.ErrorOutline,
                         contentDescription = "Error",
-                        tint = Color.Red
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             )
@@ -248,7 +248,7 @@ fun GroupItem(
                 text = group.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
 
@@ -274,14 +274,14 @@ fun StationItem(
     onStationSelect: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onStationSelect)
-            .background(
-                if (isSelected) CardBackground.copy(alpha = 0.6f) else Color.Transparent,
-                shape = RoundedCornerShape(8.dp)
-            )
+            .background(backgroundColor, shape = RoundedCornerShape(8.dp))
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -299,14 +299,14 @@ fun StationItem(
                 Icon(
                     imageVector = Icons.Default.Mic,
                     contentDescription = "Loading",
-                    tint = Color.White
+                    tint = contentColor
                 )
             },
             error = {
                 Icon(
                     imageVector = Icons.Default.ErrorOutline,
                     contentDescription = "Error",
-                    tint = Color.Red
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         )
@@ -316,20 +316,19 @@ fun StationItem(
                 text = station.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = Color.White
+                color = contentColor
             )
             Text(
                 text = station.description,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                fontSize = 12.sp
+                color = if (isSelected) contentColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Equalizer,
                 contentDescription = "Playing",
-                tint = MaterialTheme.colorScheme.primary,
+                tint = contentColor,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
@@ -337,7 +336,7 @@ fun StationItem(
             Icon(
                 imageVector = if (station.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                 contentDescription = "Favorite",
-                tint = if (station.isFavorite) Color.Yellow else Color.Gray
+                tint = if (station.isFavorite) MaterialTheme.colorScheme.secondary else contentColor.copy(alpha = 0.7f)
             )
         }
     }
