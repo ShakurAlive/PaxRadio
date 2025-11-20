@@ -276,7 +276,7 @@ private fun BottomActionBar(
             .wrapContentWidth()
             .height(84.dp)
             .clip(RoundedCornerShape(50)),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
         tonalElevation = 6.dp
     ) {
         Row(
@@ -288,10 +288,15 @@ private fun BottomActionBar(
             // Station List button (слева)
             IconButton(onClick = onListClick, enabled = !isFmMode) {
                 Icon(
-                    Icons.AutoMirrored.Filled.List,
+                    painter = painterResource(R.drawable.menu_open_icon),
                     contentDescription = "Station List",
-                    tint = if (!isFmMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier.size(38.dp)
+                    tint = if (!isFmMode)
+                        MaterialTheme.colorScheme.onSurface
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .size(42.dp)
+                        .padding(1.dp) // иногда помогает подогнать под размер Material-иконок
                 )
             }
 

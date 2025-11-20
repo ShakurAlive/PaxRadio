@@ -35,7 +35,7 @@ fun RadioTopAppBar(
                 .wrapContentWidth()
                 .height(64.dp)
                 .clip(RoundedCornerShape(50)),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
             tonalElevation = 4.dp
         ) {
             Row(

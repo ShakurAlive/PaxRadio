@@ -50,4 +50,7 @@ class RadioPlayer @Inject constructor(
     fun setVolume(volume: Float) {
         exoPlayer.volume = volume
     }
+    fun getCurrentTrackTitle(): String? {
+        return exoPlayer.mediaMetadata.title?.toString()
+    }
 }

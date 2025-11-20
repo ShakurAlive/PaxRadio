@@ -22,13 +22,13 @@
         name="Gray"
         backgroundImage="gray"
         backgroundColor="#787878"
-        primaryTextColor="#121212"
-        secondaryTextColor="#6F6F6F" />
+        primaryTextColor="#FFFFFF"
+        secondaryTextColor="#FFFFFF" />
     <theme
         name="Green"
         backgroundImage="green"
-        backgroundColor="#00313f"
-        primaryTextColor="#008221"
-        secondaryTextColor="#00c72a" />
+        backgroundColor="#4CAF50"
+        primaryTextColor="#FFFFFF"
+        secondaryTextColor="#FFFFFF" />
 </themes>
 
