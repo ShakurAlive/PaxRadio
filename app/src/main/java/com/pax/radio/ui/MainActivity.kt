@@ -205,6 +205,7 @@ private fun MainRadioScreen(
                     NowPlayingCard(
                         station = current,
                         trackTitle = trackTitle,
+                        playerState = playerState,
                         onToggleFavorite = {
                             current?.let { streamingVm.toggleFavorite(it.id) }
                         }

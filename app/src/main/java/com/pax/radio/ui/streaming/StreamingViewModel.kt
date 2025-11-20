@@ -177,7 +177,7 @@ class StreamingViewModel @Inject constructor(
 
     fun toggle() {
         when (_playerState.value) {
-            is PlayerState.Playing -> {
+            is PlayerState.Playing, is PlayerState.Buffering -> {
                 player.pause()
                 _playerState.value = PlayerState.Paused
             }
