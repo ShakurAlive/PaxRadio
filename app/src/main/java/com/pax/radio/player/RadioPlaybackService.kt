@@ -6,7 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Build
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
@@ -31,11 +33,15 @@ class RadioPlaybackService : MediaSessionService() {
     @Inject
     lateinit var radioPlayer: RadioPlayer
 
+    @Inject
+    lateinit var settingsRepository: com.pax.radio.data.SettingsRepository
+
     private lateinit var mediaSession: MediaSession
     private val CHANNEL_ID = "radio_playback_channel"
     private val NOTIFICATION_ID = 1
 
     private var currentStation: RadioStation? = null
+    private var currentTheme: com.pax.radio.data.Theme? = null
     private var stations: List<RadioStation> = emptyList()
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
@@ -44,7 +50,21 @@ class RadioPlaybackService : MediaSessionService() {
         super.onCreate()
         createNotificationChannel()
 
-        stations = RadioStationParser.parseFromAssets(this)
+        serviceScope.launch {
+            stations = RadioStationParser.parseFromAssets(this@RadioPlaybackService).flatMap {
+                when (it) {
+                    is RadioStation -> listOf(it)
+                    is com.pax.radio.data.RadioGroup -> it.stations
+                    else -> emptyList()
+                }
+            }
+
+            val themes = com.pax.radio.data.ThemeParser.parse(this@RadioPlaybackService)
+            settingsRepository.selectedTheme.collect { themeName ->
+                currentTheme = themes.find { it.name == themeName } ?: themes.first()
+                updateNotification()
+            }
+        }
 
         mediaSession = MediaSession.Builder(this, radioPlayer.exoPlayer)
             .setId("PaxRadioSession")
@@ -112,57 +132,76 @@ class RadioPlaybackService : MediaSessionService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val playPauseAction = if (radioPlayer.isPlaying()) {
-            NotificationCompat.Action(
-                R.drawable.ic_pause,
-                "Pause",
-                createActionIntent(ACTION_PLAY_PAUSE)
-            )
-        } else {
-            NotificationCompat.Action(
-                R.drawable.ic_play,
-                "Play",
-                createActionIntent(ACTION_PLAY_PAUSE)
-            )
+        // Get the layout for the custom notification
+        val collapsedView = RemoteViews(packageName, R.layout.notification_collapsed)
+        val expandedView = RemoteViews(packageName, R.layout.notification_expanded)
+
+        // Apply data and colors
+        val title = currentStation?.name ?: "PaxRadio"
+        val text = radioPlayer.getCurrentTrackTitle() ?: if (radioPlayer.isPlaying()) "Playing" else "Paused"
+        val playPauseIcon = if (radioPlayer.isPlaying()) R.drawable.ic_pause else R.drawable.ic_play
+
+        // Collapsed View
+        collapsedView.setTextViewText(R.id.notification_title, title)
+        collapsedView.setTextViewText(R.id.notification_text, text)
+        collapsedView.setImageViewBitmap(R.id.notification_logo, stationLogo ?: drawableToBitmap(R.drawable.ic_radio))
+        collapsedView.setImageViewResource(R.id.notification_play_pause, playPauseIcon)
+
+        // Expanded View
+        expandedView.setTextViewText(R.id.notification_title, title)
+        expandedView.setTextViewText(R.id.notification_text, text)
+        expandedView.setImageViewBitmap(R.id.notification_logo, stationLogo ?: drawableToBitmap(R.drawable.ic_radio))
+        expandedView.setImageViewResource(R.id.notification_play_pause, playPauseIcon)
+
+        // Apply colors from theme
+        currentTheme?.let {
+            val bgColor = android.graphics.Color.parseColor(it.backgroundColor)
+            val primaryColor = android.graphics.Color.parseColor(it.primaryTextColor)
+            val secondaryColor = android.graphics.Color.parseColor(it.secondaryTextColor)
+
+            collapsedView.setInt(R.id.notification_root, "setBackgroundColor", bgColor)
+            collapsedView.setTextColor(R.id.notification_title, primaryColor)
+            collapsedView.setTextColor(R.id.notification_text, secondaryColor)
+            collapsedView.setInt(R.id.notification_play_pause, "setColorFilter", primaryColor)
+
+            expandedView.setInt(R.id.notification_root, "setBackgroundColor", bgColor)
+            expandedView.setTextColor(R.id.notification_title, primaryColor)
+            expandedView.setTextColor(R.id.notification_text, secondaryColor)
+            expandedView.setInt(R.id.notification_prev, "setColorFilter", primaryColor)
+            expandedView.setInt(R.id.notification_play_pause, "setColorFilter", primaryColor)
+            expandedView.setInt(R.id.notification_next, "setColorFilter", primaryColor)
         }
 
-        val prevAction = NotificationCompat.Action(
-            R.drawable.ic_previous,
-            "Previous",
-            createActionIntent(ACTION_PREVIOUS)
-        )
+        // Set pending intents for buttons
+        collapsedView.setOnClickPendingIntent(R.id.notification_play_pause, createActionIntent(ACTION_PLAY_PAUSE))
+        expandedView.setOnClickPendingIntent(R.id.notification_prev, createActionIntent(ACTION_PREVIOUS))
+        expandedView.setOnClickPendingIntent(R.id.notification_play_pause, createActionIntent(ACTION_PLAY_PAUSE))
+        expandedView.setOnClickPendingIntent(R.id.notification_next, createActionIntent(ACTION_NEXT))
 
-        val nextAction = NotificationCompat.Action(
-            R.drawable.ic_next,
-            "Next",
-            createActionIntent(ACTION_NEXT)
-        )
-
-        val shuffleAction = NotificationCompat.Action(
-            R.drawable.ic_shuffle,
-            "Shuffle",
-            createActionIntent(ACTION_SHUFFLE)
-        )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(currentStation?.name ?: "PaxRadio")
-            .setContentText(if (radioPlayer.isPlaying()) "Playing" else "Paused")
             .setSmallIcon(R.drawable.ic_radio)
-            .setLargeIcon(stationLogo)
             .setContentIntent(contentIntent)
-            .addAction(prevAction)
-            .addAction(playPauseAction)
-            .addAction(nextAction)
-            .addAction(shuffleAction)
-            .setStyle(
-                androidx.media.app.NotificationCompat.MediaStyle()
-                    .setMediaSession(mediaSession.sessionCompatToken)
-                    .setShowActionsInCompactView(0, 1, 2)
-            )
+            .setCustomContentView(collapsedView)
+            .setCustomBigContentView(expandedView)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(radioPlayer.isPlaying())
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
+    }
+
+    private fun drawableToBitmap(drawableId: Int): Bitmap {
+        val drawable = getDrawable(drawableId)!!
+        val bitmap = Bitmap.createBitmap(
+            drawable.intrinsicWidth,
+            drawable.intrinsicHeight,
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 
     private fun createActionIntent(action: String): PendingIntent {

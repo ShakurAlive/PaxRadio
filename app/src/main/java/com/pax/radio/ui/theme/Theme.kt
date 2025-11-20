@@ -1,10 +1,16 @@
 package com.pax.radio.ui.theme
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.pax.radio.data.AppTheme
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 
 // Neon Theme Colors
 val DeepNavy = Color(0xFF000020)
@@ -48,17 +54,36 @@ private val BordeauxColorScheme = darkColorScheme(
 
 @Composable
 fun PaxRadioTheme(
-    appTheme: AppTheme = AppTheme.NEON,
+    themeName: String = "Default",
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when (appTheme) {
-        AppTheme.NEON -> NeonColorScheme
-        AppTheme.BORDEAUX -> BordeauxColorScheme
-    }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val themes = remember { com.pax.radio.data.ThemeParser.parse(context) }
+    val theme = themes.find { it.name == themeName } ?: themes.first()
+
+    val colorScheme = dynamicColorScheme(
+        backgroundColor = theme.backgroundColor,
+        primaryTextColor = theme.primaryTextColor,
+        secondaryTextColor = theme.secondaryTextColor
+    )
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography,
-        content = content
-    )
+        typography = AppTypography
+    ) {
+        Box {
+            theme.backgroundImage?.let {
+                val resId = context.resources.getIdentifier(it, "drawable", context.packageName)
+                if (resId != 0) {
+                    Image(
+                        painter = painterResource(id = resId),
+                        contentDescription = "Background",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+            content()
+        }
+    }
 }

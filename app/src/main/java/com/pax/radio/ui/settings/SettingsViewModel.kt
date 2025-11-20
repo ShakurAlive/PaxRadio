@@ -1,8 +1,9 @@
 package com.pax.radio.ui.settings
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pax.radio.data.AppTheme
 import com.pax.radio.data.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,20 +15,20 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
-) : ViewModel() {
+    private val settingsRepository: SettingsRepository,
+    application: Application
+) : AndroidViewModel(application) {
 
-    val theme: StateFlow<AppTheme> = settingsRepository.selectedTheme
-        .map { AppTheme.valueOf(it) }
+    val theme: StateFlow<String> = settingsRepository.selectedTheme
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = AppTheme.NEON
+            initialValue = "Default"
         )
 
-    fun setTheme(theme: AppTheme) {
+    fun setTheme(themeName: String) {
         viewModelScope.launch {
-            settingsRepository.setSelectedTheme(theme.name)
+            settingsRepository.setSelectedTheme(themeName)
         }
     }
 }

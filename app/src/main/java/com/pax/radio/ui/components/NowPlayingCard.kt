@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import com.pax.radio.data.PlayerState
 import com.pax.radio.data.RadioStation
 import com.pax.radio.ui.theme.CardBackground
 
@@ -29,6 +30,7 @@ import com.pax.radio.ui.theme.CardBackground
 fun NowPlayingCard(
     station: RadioStation?,
     trackTitle: String?,
+    playerState: PlayerState,
     modifier: Modifier = Modifier,
     onToggleFavorite: () -> Unit = {}
 ) {
@@ -55,23 +57,47 @@ fun NowPlayingCard(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Station Name
+                val stationName = station?.name ?: "Станция не выбрана"
+                val nameParts = stationName.split(" (", limit = 2)
+                val mainName = nameParts.getOrNull(0) ?: stationName
+                val region = if (nameParts.size > 1) "(${nameParts[1]}" else null
+
                 Text(
-                    text = station?.name ?: "Станция не выбрана",
+                    text = mainName,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 28.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
+                region?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Track info
+                val statusText = when (playerState) {
+                    is PlayerState.Playing -> trackTitle ?: "Radio Stream"
+                    is PlayerState.Buffering -> "Buffering..."
+                    is PlayerState.Error -> "Playback Error"
+                    is PlayerState.NoStream -> "Stream not available"
+                    else -> "Stopped"
+                }
+
                 Text(
-                    text = trackTitle ?: "Radio Stream",
+                    text = statusText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFFB0B0B0),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -104,8 +130,10 @@ private fun StationLogo(
 ) {
     val context = LocalContext.current
     val imageRequest = remember(imageUrl) {
+        val imagePath = imageUrl?.let { "file:///android_asset/$it" }
+            ?: "file:///android_asset/radio_assets/logos/default.png"
         ImageRequest.Builder(context)
-            .data(imageUrl?.let { "file:///android_asset/$it" })
+            .data(imagePath)
             .crossfade(true)
             .build()
     }

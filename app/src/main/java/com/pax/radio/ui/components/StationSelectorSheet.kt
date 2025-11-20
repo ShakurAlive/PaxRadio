@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -32,28 +33,52 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import com.pax.radio.data.DisplayableItem
+import com.pax.radio.data.RadioGroup
 import com.pax.radio.data.RadioStation
 import com.pax.radio.ui.theme.CardBackground
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationSelectorSheet(
-    stations: List<RadioStation>,
+    stations: List<DisplayableItem>,
     currentStation: RadioStation?,
     onStationSelect: (RadioStation) -> Unit,
     onToggleFavorite: (String) -> Unit,
+    onToggleGroup: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
     val filteredStations = remember(stations, searchQuery) {
         if (searchQuery.isEmpty()) {
             stations
         } else {
-            stations.filter {
-                it.name.contains(searchQuery, ignoreCase = true) ||
-                it.description.contains(searchQuery, ignoreCase = true)
+            stations.mapNotNull { item ->
+                when (item) {
+                    is RadioStation -> if (item.name.contains(searchQuery, ignoreCase = true) || item.description.contains(searchQuery, ignoreCase = true)) item else null
+                    is RadioGroup -> {
+                        val filtered = item.stations.filter { it.name.contains(searchQuery, ignoreCase = true) }
+                        if (filtered.isNotEmpty()) item.copy(stations = filtered, isExpanded = true) else null
+                    }
+                    else -> null
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(currentStation, filteredStations) {
+        coroutineScope.launch {
+            val index = filteredStations.indexOfFirst {
+                (it is RadioStation && it.id == currentStation?.id) ||
+                (it is RadioGroup && it.stations.any { s -> s.id == currentStation?.id })
+            }
+            if (index != -1) {
+                listState.animateScrollToItem(index)
             }
         }
     }
@@ -68,7 +93,7 @@ fun StationSelectorSheet(
                 .fillMaxWidth()
                 .padding(16.dp),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
         ) {
             Column(
                 modifier = Modifier
@@ -92,63 +117,44 @@ fun StationSelectorSheet(
                             text = "Выбор станции",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     AnimatedVisibility(
                         visible = searchExpanded,
                         enter = fadeIn() + expandHorizontally(),
-                        exit = fadeOut() + shrinkHorizontally(),
-                        modifier = Modifier.weight(1f)
+                        exit = fadeOut() + shrinkHorizontally()
                     ) {
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = { Text("Поиск станции...", color = Color.Gray) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(end = 8.dp),
+                            placeholder = { Text("Поиск...") },
+                            modifier = Modifier.fillMaxWidth(0.8f),
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                cursorColor = MaterialTheme.colorScheme.primary,
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = Color.Gray
-                            ),
-                            shape = RoundedCornerShape(12.dp)
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         )
                     }
 
-                    IconButton(
-                        onClick = {
-                            searchExpanded = !searchExpanded
-                            if (!searchExpanded) {
-                                searchQuery = ""
-                            }
-                        }
-                    ) {
+                    IconButton(onClick = { searchExpanded = !searchExpanded }) {
                         Icon(
                             imageVector = if (searchExpanded) Icons.Default.Close else Icons.Default.Search,
-                            contentDescription = if (searchExpanded) "Закрыть поиск" else "Открыть поиск",
-                            tint = MaterialTheme.colorScheme.primary
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    state = listState,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(filteredStations, key = { it.id }) { station ->
-                        StationCard(
-                            station = station,
-                            isSelected = station.id == currentStation?.id,
-                            onClick = { onStationSelect(station) },
-                            onToggleFavorite = { onToggleFavorite(station.id) }
-                        )
-                    }
-
                     if (filteredStations.isEmpty()) {
                         item {
                             Box(
@@ -159,9 +165,34 @@ fun StationSelectorSheet(
                             ) {
                                 Text(
                                     text = "Станции не найдены",
-                                    color = Color.Gray,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
+                            }
+                        }
+                    } else {
+                        items(
+                            items = filteredStations,
+                            key = { it.id }
+                        ) { item ->
+                            when (item) {
+                                is RadioGroup -> {
+                                    GroupItem(
+                                        group = item,
+                                        onToggleGroup = onToggleGroup,
+                                        onStationSelect = onStationSelect,
+                                        currentStation = currentStation,
+                                        onToggleFavorite = onToggleFavorite
+                                    )
+                                }
+                                is RadioStation -> {
+                                    StationItem(
+                                        station = item,
+                                        isSelected = item.id == currentStation?.id,
+                                        onStationSelect = { onStationSelect(item) },
+                                        onToggleFavorite = { onToggleFavorite(item.id) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -172,105 +203,141 @@ fun StationSelectorSheet(
 }
 
 @Composable
-private fun StationCard(
-    station: RadioStation,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    onToggleFavorite: () -> Unit
+fun GroupItem(
+    group: RadioGroup,
+    onToggleGroup: (String) -> Unit,
+    onStationSelect: (RadioStation) -> Unit,
+    currentStation: RadioStation?,
+    onToggleFavorite: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val isInvalid = !station.isValidUrl
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = when {
-            isInvalid -> Color(0xFF3A1A1A) // Red tint for invalid
-            isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-            else -> CardBackground
-        }
-    ) {
+    Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .clickable { onToggleGroup(group.id) }
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Station Logo
             SubcomposeAsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(station.imageUrl?.let { "file:///android_asset/$it" })
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(group.imageUrl)
                     .crossfade(true)
                     .build(),
-                contentDescription = station.name,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isInvalid) Color(0xFF5A3A3A) else Color(0xFF3A3A3A)),
+                contentDescription = group.name,
                 contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                loading = {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = "Loading",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                },
                 error = {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(if (isInvalid) Color(0xFF5A3A3A) else Color(0xFF3A3A3A)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Filled.Mic,
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            tint = if (isInvalid) Color(0xFFFF6666) else MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.ErrorOutline,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
             )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = group.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = station.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isInvalid) Color(0xFFFF6666) else Color.White,
-                    fontSize = 18.sp
+        AnimatedVisibility(visible = group.isExpanded) {
+            Column(modifier = Modifier.padding(start = 16.dp)) {
+                group.stations.forEach { station ->
+                    StationItem(
+                        station = station,
+                        isSelected = station.id == currentStation?.id,
+                        onStationSelect = { onStationSelect(station) },
+                        onToggleFavorite = { onToggleFavorite(station.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StationItem(
+    station: RadioStation,
+    isSelected: Boolean,
+    onStationSelect: () -> Unit,
+    onToggleFavorite: () -> Unit
+) {
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onStationSelect)
+            .background(backgroundColor, shape = RoundedCornerShape(8.dp))
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SubcomposeAsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(station.imageUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = station.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            loading = {
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = "Loading",
+                    tint = contentColor
                 )
-                Text(
-                    text = if (isInvalid) "No stream available" else station.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isInvalid) Color(0xFFCC6666) else Color(0xFFB0B0B0)
+            },
+            error = {
+                Icon(
+                    imageVector = Icons.Default.ErrorOutline,
+                    contentDescription = "Error",
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
-
-            // Иконка избранного
-            IconButton(
-                onClick = onToggleFavorite,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = if (station.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                    contentDescription = if (station.isFavorite) "Убрать из избранного" else "Добавить в избранное",
-                    tint = if (station.isFavorite) Color(0xFFFFD700) else Color.Gray,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            if (isSelected) {
-                Icon(
-                    Icons.Filled.Equalizer,
-                    contentDescription = "Playing",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            } else if (isInvalid) {
-                Icon(
-                    Icons.Filled.ErrorOutline,
-                    contentDescription = "Invalid",
-                    tint = Color(0xFFFF6666),
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = station.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = contentColor
+            )
+            Text(
+                text = station.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isSelected) contentColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Default.Equalizer,
+                contentDescription = "Playing",
+                tint = contentColor,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+        IconButton(onClick = onToggleFavorite) {
+            Icon(
+                imageVector = if (station.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                contentDescription = "Favorite",
+                tint = if (station.isFavorite) MaterialTheme.colorScheme.secondary else contentColor.copy(alpha = 0.7f)
+            )
         }
     }
 }
