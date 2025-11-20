@@ -44,7 +44,13 @@ class RadioPlaybackService : MediaSessionService() {
         super.onCreate()
         createNotificationChannel()
 
-        stations = RadioStationParser.parseFromAssets(this)
+        stations = RadioStationParser.parseFromAssets(this).flatMap {
+            when (it) {
+                is RadioStation -> listOf(it)
+                is com.pax.radio.data.RadioGroup -> it.stations
+                else -> emptyList()
+            }
+        }
 
         mediaSession = MediaSession.Builder(this, radioPlayer.exoPlayer)
             .setId("PaxRadioSession")

@@ -226,14 +226,24 @@ private fun MainRadioScreen(
             onToggleFavorite = { stationId ->
                 streamingVm.toggleFavorite(stationId)
             },
+            onToggleGroup = { groupId ->
+                streamingVm.toggleGroup(groupId)
+            },
             onDismiss = { showStationSelector = false }
         )
     }
 
     if (showSleepAlarm) {
+        val radioStations = stations.flatMap {
+            when (it) {
+                is com.pax.radio.data.RadioStation -> listOf(it)
+                is com.pax.radio.data.RadioGroup -> it.stations
+                else -> emptyList()
+            }
+        }
         SleepAlarmBottomSheet(
             currentStation = current,
-            stations = stations,
+            stations = radioStations,
             onDismiss = { showSleepAlarm = false },
             onSleepTimerSet = { durationMillis ->
                 streamingVm.setSleepTimer(durationMillis)
