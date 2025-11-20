@@ -1,6 +1,7 @@
 package com.pax.radio.ui
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -76,7 +77,11 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         val serviceIntent = Intent(this, RadioPlaybackService::class.java)
-        startService(serviceIntent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
 
         // Register broadcast receiver
         val filter = android.content.IntentFilter(com.pax.radio.player.RadioPlaybackService.ACTION_PLAYBACK_STATE_CHANGED)
@@ -116,7 +121,8 @@ private fun AppContent(soundPlayer: SoundPlayer, streamingVm: StreamingViewModel
                 SettingsScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToThemes = { navController.navigate(NavRoute.Themes.route) },
-                    onNavigateToGeneral = { navController.navigate(NavRoute.General.route) }
+                    onNavigateToGeneral = { navController.navigate(NavRoute.General.route) },
+                    onNavigateToAbout = { navController.navigate(NavRoute.About.route) }
                 )
             }
             composable(NavRoute.Themes.route) {
@@ -126,6 +132,9 @@ private fun AppContent(soundPlayer: SoundPlayer, streamingVm: StreamingViewModel
             }
             composable(NavRoute.General.route) {
                 // TODO: Create GeneralSettingsScreen
+            }
+            composable(NavRoute.About.route) {
+                com.pax.radio.ui.settings.AboutScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
     }

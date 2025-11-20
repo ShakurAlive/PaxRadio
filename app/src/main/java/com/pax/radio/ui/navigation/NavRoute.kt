@@ -5,6 +5,6 @@ enum class NavRoute(val route: String, val label: String) {
     Fm("fm","FM Radio"),
     Settings("settings", "Settings"),
     Themes("themes", "Themes"),
-    General("general", "General")
+    General("general", "General"),
+    About("about", "About")
 }
-

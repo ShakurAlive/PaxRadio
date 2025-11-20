@@ -22,6 +22,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToThemes: () -> Unit,
     onNavigateToGeneral: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     Scaffold(
@@ -64,6 +65,11 @@ fun SettingsScreen(
                     item {
                         SettingsItem(title = "Темы") {
                             onNavigateToThemes()
+                        }
+                    }
+                    item {
+                        SettingsItem(title = "О приложении") {
+                            onNavigateToAbout()
                         }
                     }
                 }

@@ -50,6 +50,10 @@ class RadioPlaybackService : MediaSessionService() {
         super.onCreate()
         createNotificationChannel()
 
+        // Запуск foreground-сервиса с уведомлением сразу
+        val notification = buildNotification(null)
+        startForeground(NOTIFICATION_ID, notification)
+
         serviceScope.launch {
             stations = RadioStationParser.parseFromAssets(this@RadioPlaybackService).flatMap {
                 when (it) {

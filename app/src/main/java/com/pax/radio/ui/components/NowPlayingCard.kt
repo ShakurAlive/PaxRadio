@@ -57,7 +57,7 @@ fun NowPlayingCard(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Station Name
-                val stationName = station?.name ?: "Станция не выбрана"
+                val stationName = station?.name ?: "Станция хуй не выбрана"
                 val nameParts = stationName.split(" (", limit = 2)
                 val mainName = nameParts.getOrNull(0) ?: stationName
                 val region = if (nameParts.size > 1) "(${nameParts[1]}" else null
